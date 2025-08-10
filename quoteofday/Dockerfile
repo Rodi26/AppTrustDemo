@@ -33,7 +33,10 @@ RUN apt-get update && \
 
 # Copy download script
 COPY download-artifact.sh .
-RUN chmod +x download-artifact.sh
+
+# Set proper ownership and permissions
+RUN chown -R spring:spring /app && \
+    chmod +x download-artifact.sh
 
 # Switch to non-root user
 USER spring
