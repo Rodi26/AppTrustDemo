@@ -6,7 +6,7 @@ ARG ARTIFACTORY_URL=https://evidencetrial.jfrog.io
 ARG REPOSITORY=commons-dev-maven-virtual
 ARG GROUP_ID=com.example
 ARG ARTIFACT_ID=quote-of-day-service
-ARG VERSION=1.0.0
+ARG VERSION=1.0.0-SNAPSHOT
 ARG ARTIFACTORY_USERNAME=noam
 ARG ARTIFACTORY_PASSWORD
 

@@ -8,7 +8,7 @@ ARTIFACTORY_URL=${ARTIFACTORY_URL:-"https://evidencetrial.jfrog.io"}
 REPOSITORY=${REPOSITORY:-"commons-dev-maven-virtual"}
 GROUP_ID=${GROUP_ID:-"com.example"}
 ARTIFACT_ID=${ARTIFACT_ID:-"quote-of-day-service"}
-VERSION=${VERSION:-"1.0.0"}
+VERSION=${VERSION:-"1.0.0-SNAPSHOT"}
 USERNAME=${ARTIFACTORY_USERNAME:-"noam"}
 PASSWORD=${ARTIFACTORY_PASSWORD:-""}
 
