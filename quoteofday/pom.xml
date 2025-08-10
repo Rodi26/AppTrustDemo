@@ -65,4 +65,31 @@
             </plugin>
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>setup-jfrog-cli-server</id>
+            <name>JFrog Artifactory</name>
+            <url>https://evidencetrial.jfrog.io/artifactory/commons-dev-maven-virtual</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>setup-jfrog-cli-server</id>
+            <name>JFrog Artifactory Release Repository</name>
+            <url>https://evidencetrial.jfrog.io/artifactory/commons-dev-maven-virtual</url>
+        </repository>
+        <snapshotRepository>
+            <id>setup-jfrog-cli-server</id>
+            <name>JFrog Artifactory Snapshot Repository</name>
+            <url>https://evidencetrial.jfrog.io/artifactory/commons-dev-maven-virtual</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project> 
