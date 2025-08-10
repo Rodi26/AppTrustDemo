@@ -82,7 +82,7 @@ jobs:
         cd quoteofday
         # Build and push to JFrog Artifactory
         docker buildx build --platform linux/amd64,linux/arm64 \
-          -t ${{ env.DOCKER_REGISTRY }}/quoteofday:1.0.${{ github.run_number }} \
+          -t ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} \
           -t ${{ env.DOCKER_REGISTRY }}/quoteofday:latest \
           --push .
         
@@ -101,6 +101,6 @@ jobs:
     - name: Log Docker image info
       run: |
         echo "✅ Successfully pushed Docker images to JFrog Artifactory:"
-        echo "   - ${{ env.DOCKER_REGISTRY }}/quoteofday:1.0.${{ github.run_number }}"
+        echo "   - ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}"
         echo "   - ${{ env.DOCKER_REGISTRY }}/quoteofday:latest"
         echo "   - Platforms: linux/amd64, linux/arm64"

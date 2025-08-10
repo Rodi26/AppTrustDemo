@@ -1,11 +1,11 @@
 version: 1
 type: maven
 resolver:
-    serverId: full
-    snapshotRepo: commons-dev-maven-remote
-    releaseRepo: commons-dev-maven-remote
+    serverId: https://evidencetrial.jfrog.io
+    snapshotRepo: commons-dev-maven-virtual
+    releaseRepo: commons-dev-maven-virtual
 deployer:
-    serverId: full
+    serverId: https://evidencetrial.jfrog.io
     snapshotRepo: commons-dev-maven-virtual
     releaseRepo: commons-dev-maven-virtual
 useWrapper: true
