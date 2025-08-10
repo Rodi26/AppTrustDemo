@@ -17,14 +17,20 @@ DOWNLOAD_URL="${ARTIFACTORY_URL}/artifactory/${REPOSITORY}/${GROUP_ID//.//}/${AR
 
 echo "🔍 Downloading artifact from Artifactory..."
 echo "URL: ${DOWNLOAD_URL}"
+echo "Repository: ${REPOSITORY}"
+echo "Group ID: ${GROUP_ID}"
+echo "Artifact ID: ${ARTIFACT_ID}"
+echo "Version: ${VERSION}"
 
-# Download the JAR file
+# Download the JAR file with verbose output
 if [ -n "$PASSWORD" ]; then
     # Use authentication
-    curl -u "${USERNAME}:${PASSWORD}" -L -o app.jar "${DOWNLOAD_URL}"
+    echo "🔐 Using authentication for download..."
+    curl -v -u "${USERNAME}:${PASSWORD}" -L -o app.jar "${DOWNLOAD_URL}"
 else
     # Try without authentication (for public repositories)
-    curl -L -o app.jar "${DOWNLOAD_URL}"
+    echo "🌐 Attempting download without authentication..."
+    curl -v -L -o app.jar "${DOWNLOAD_URL}"
 fi
 
 # Check if download was successful
@@ -35,10 +41,21 @@ if [ ! -f "app.jar" ]; then
     echo "  - Repository: ${REPOSITORY}"
     echo "  - Artifact coordinates: ${GROUP_ID}:${ARTIFACT_ID}:${VERSION}"
     echo "  - Authentication credentials"
+    echo "  - Full URL: ${DOWNLOAD_URL}"
     exit 1
 fi
 
-echo "✅ Successfully downloaded artifact: $(ls -lh app.jar)"
+# Check file size
+FILE_SIZE=$(stat -c%s app.jar 2>/dev/null || stat -f%z app.jar 2>/dev/null || echo "unknown")
+echo "✅ Successfully downloaded artifact: $(ls -lh app.jar) (${FILE_SIZE} bytes)"
+
+# Validate JAR file
+if [ "$FILE_SIZE" -lt 1000 ]; then
+    echo "⚠️ Warning: JAR file seems too small (${FILE_SIZE} bytes). It might be an error page."
+    echo "📋 File content preview:"
+    head -20 app.jar
+    exit 1
+fi
 
 # Run the application
 echo "🚀 Starting Spring Boot application..."

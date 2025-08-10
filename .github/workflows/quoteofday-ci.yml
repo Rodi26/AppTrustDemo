@@ -109,9 +109,37 @@ jobs:
         # Pull the image for testing
         docker pull ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}
         
+        # Run container with better debugging
         docker run -d --name test-container -p 8080:8080 ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}
-        sleep 10
-        curl -f http://localhost:8080/api/quotes/health || exit 1
+        
+        # Wait a bit and check container status
+        sleep 5
+        echo "🔍 Container status:"
+        docker ps -a
+        
+        # Check container logs for errors
+        echo "📋 Container logs:"
+        docker logs test-container || echo "No logs available"
+        
+        # Wait longer for application to start
+        sleep 15
+        
+        # Check if container is still running
+        if ! docker ps | grep -q test-container; then
+          echo "❌ Container stopped unexpectedly"
+          docker logs test-container || echo "No logs available"
+          exit 1
+        fi
+        
+        # Test health endpoint
+        echo "🏥 Testing health endpoint..."
+        curl -f http://localhost:8080/api/quotes/health || {
+          echo "❌ Health check failed"
+          docker logs test-container || echo "No logs available"
+          exit 1
+        }
+        
+        # Cleanup
         docker stop test-container
         docker rm test-container
         
