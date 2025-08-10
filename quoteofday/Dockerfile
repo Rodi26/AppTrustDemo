@@ -1,28 +1,23 @@
-# Multi-stage build for Spring Boot application
-FROM eclipse-temurin:21-jdk AS builder
-
-# Set working directory
-WORKDIR /app
-
-# Copy Maven wrapper and pom.xml
-COPY .mvn/ .mvn/
-COPY mvnw .
-COPY pom.xml .
-
-# Make mvnw executable
-RUN chmod +x mvnw
-
-# Download dependencies (this layer will be cached if pom.xml doesn't change)
-RUN ./mvnw dependency:go-offline -B
-
-# Copy source code
-COPY src ./src
-
-# Build the application
-RUN ./mvnw clean package -DskipTests
-
-# Runtime stage
+# Single-stage build that downloads JAR from Artifactory
 FROM eclipse-temurin:21-jre
+
+# Build arguments for Artifactory configuration
+ARG ARTIFACTORY_URL=https://evidencetrial.jfrog.io
+ARG REPOSITORY=commons-dev-maven-virtual
+ARG GROUP_ID=com.example
+ARG ARTIFACT_ID=quote-of-day-service
+ARG VERSION=1.0.0
+ARG ARTIFACTORY_USERNAME=noam
+ARG ARTIFACTORY_PASSWORD
+
+# Set environment variables
+ENV ARTIFACTORY_URL=$ARTIFACTORY_URL
+ENV REPOSITORY=$REPOSITORY
+ENV GROUP_ID=$GROUP_ID
+ENV ARTIFACT_ID=$ARTIFACT_ID
+ENV VERSION=$VERSION
+ENV ARTIFACTORY_USERNAME=$ARTIFACTORY_USERNAME
+ENV ARTIFACTORY_PASSWORD=$ARTIFACTORY_PASSWORD
 
 # Create non-root user for security
 RUN groupadd -r spring && \
@@ -31,11 +26,14 @@ RUN groupadd -r spring && \
 # Set working directory
 WORKDIR /app
 
-# Copy the built JAR from builder stage
-COPY --from=builder /app/target/quote-of-day-service-*.jar app.jar
+# Install wget for health check and curl for downloading
+RUN apt-get update && \
+    apt-get install -y wget curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# Change ownership to non-root user
-RUN chown spring:spring /app/app.jar
+# Copy download script
+COPY download-artifact.sh .
+RUN chmod +x download-artifact.sh
 
 # Switch to non-root user
 USER spring
@@ -48,4 +46,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/quotes/health || exit 1
 
 # Run the application
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["./download-artifact.sh"]

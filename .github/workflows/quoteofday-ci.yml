@@ -43,14 +43,7 @@ jobs:
         JF_USER: ${{ vars.JF_USER }}
         JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       
-    - name: Build 
-      run: |
-        cd quoteofday
-        # Build with Maven Central for dependencies
-        ./mvnw clean package -DskipTests -q --batch-mode
-        echo "✅ Build successful with Maven Central"
-
-    - name: Deploy to Artifactory
+    - name: Build and Deploy to Artifactory
       run: |
         cd quoteofday
         jf mvn install -q --batch-mode --no-transfer-progress
@@ -93,8 +86,15 @@ jobs:
     - name: Build and Push Docker image
       run: |
         cd quoteofday
-        # Build and push to JFrog Artifactory
+        # Build and push to JFrog Artifactory with environment variables for artifact download
         docker buildx build --platform linux/amd64,linux/arm64 \
+          --build-arg ARTIFACTORY_URL=${{ vars.JF_URL }} \
+          --build-arg REPOSITORY=commons-dev-maven-virtual \
+          --build-arg GROUP_ID=com.example \
+          --build-arg ARTIFACT_ID=quote-of-day-service \
+          --build-arg VERSION=1.0.0 \
+          --build-arg ARTIFACTORY_USERNAME=${{ vars.JF_USER }} \
+          --build-arg ARTIFACTORY_PASSWORD=${{ secrets.JF_ACCESS_TOKEN }} \
           -t ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} \
           -t ${{ env.DOCKER_REGISTRY }}/quoteofday:latest \
           --push .
@@ -103,9 +103,9 @@ jobs:
       run: |
         cd quoteofday
         # Pull the image for testing
-        docker pull ${{ env.DOCKER_REGISTRY }}/quoteofday:latest
+        docker pull ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}
         
-        docker run -d --name test-container -p 8080:8080 ${{ env.DOCKER_REGISTRY }}/quoteofday:latest
+        docker run -d --name test-container -p 8080:8080 ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}
         sleep 10
         curl -f http://localhost:8080/api/quotes/health || exit 1
         docker stop test-container
