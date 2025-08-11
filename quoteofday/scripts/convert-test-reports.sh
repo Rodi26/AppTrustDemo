@@ -70,15 +70,20 @@ add_floating_point() {
     local b="$2"
     
     # Convert to integers (multiply by 1000 to preserve 3 decimal places)
-    local a_int=$(echo "$a" | sed 's/\.//' | sed 's/^0*//')
-    local b_int=$(echo "$b" | sed 's/\.//' | sed 's/^0*//')
+    # Remove decimal point and pad with zeros if needed
+    local a_clean=$(echo "$a" | sed 's/\.//')
+    local b_clean=$(echo "$b" | sed 's/\.//')
     
-    # Handle empty strings
-    if [ -z "$a_int" ]; then a_int=0; fi
-    if [ -z "$b_int" ]; then b_int=0; fi
+    # Pad with zeros to ensure 3 digits after decimal
+    while [ ${#a_clean} -lt 4 ]; do
+        a_clean="0$a_clean"
+    done
+    while [ ${#b_clean} -lt 4 ]; do
+        b_clean="0$b_clean"
+    done
     
     # Add integers
-    local result=$((a_int + b_int))
+    local result=$((10#$a_clean + 10#$b_clean))
     
     # Convert back to decimal (divide by 1000)
     local whole=$((result / 1000))
