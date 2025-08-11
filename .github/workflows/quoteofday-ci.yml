@@ -87,9 +87,8 @@ jobs:
       run: |
         cd quoteofday
         # Build and push to JFrog Artifactory
-        jf docker buildx build --platform linux/amd64,linux/arm64 \
-          -t ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} \
-          --build-name quoteofday --build-number ${{ github.run_number }} 
+        docker buildx build --platform linux/amd64,linux/arm64 \
+          -t ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} .
         jf rt docker-push ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} --build-name quoteofday --build-number ${{ github.run_number }}  
 
     - name: Evidence on docker image
