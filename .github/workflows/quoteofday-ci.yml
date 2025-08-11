@@ -52,25 +52,6 @@ jobs:
         
         # Build and deploy to Artifactory
         jf mvn install -q --batch-mode --no-transfer-progress
-
-  docker-build:
-    name: Docker Build - Quote of Day
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    if: needs.build-and-test.result == 'success'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      with:
-        version: latest
-      env:
-        JF_URL: ${{ vars.JF_URL }}
-        JF_USER: ${{ vars.JF_USER }}
-        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -112,17 +93,8 @@ jobs:
         # Run container with better debugging
         docker run -d --name test-container -p 8080:8080 ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}
         
-        # Wait a bit and check container status
-        sleep 5
-        echo "🔍 Container status:"
-        docker ps -a
-        
-        # Check container logs for errors
-        echo "📋 Container logs:"
-        docker logs test-container || echo "No logs available"
-        
         # Wait longer for application to start
-        sleep 15
+        sleep 5
         
         # Check if container is still running
         if ! docker ps | grep -q test-container; then
@@ -145,6 +117,6 @@ jobs:
         
     - name: Log Docker image info
       run: |
-        echo "✅ Successfully pushed Docker images to JFrog Artifactory:"
-        echo "   - ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}"
-        echo "   - Platforms: linux/amd64, linux/arm64"
+        echo "✅ Successfully pushed Docker images to JFrog Artifactory:" >> $GITHUB_STEP_SUMMARY
+        echo "   - ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+        echo "   - Platforms: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
