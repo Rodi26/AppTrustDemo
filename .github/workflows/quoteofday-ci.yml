@@ -51,7 +51,7 @@ jobs:
         echo "📦 Updated version to 1.0.0-${{ github.run_number }}"
         
         # Build and deploy to Artifactory
-        jf mvn install -q --batch-mode --no-transfer-progress
+        jf mvn deploy -q --batch-mode --no-transfer-progress --build-name quoteofday --build-number ${{ github.run_number }}
       
     - name: Create Test Evidence JSON
       if: always()
@@ -89,6 +89,7 @@ jobs:
         # Build and push to JFrog Artifactory
         jf docker buildx build --platform linux/amd64,linux/arm64 \
           -t ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} \
+          --build-name quoteofday --build-number ${{ github.run_number }} \
           --push .
 
     - name: Test Docker image
@@ -117,7 +118,7 @@ jobs:
 
     - name: Add test Evidence
       run: |
-        echo "{user:${{ github.actor}}, date:$(date -u +"%Y-%m-%dT%H:%M:%SZ")}" > sign.json
+        echo '{"user":"${{ github.actor }}", "date":"'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' > sign.json
         jf evd create --build-name quoteofday --build-number ${{ github.run_number }} --key "${{ secrets.PRIVATE_KEY }}" --key-alias CI-RSA-KEY --predicate sign.json --predicate-type https://jfrog.com/evidence/signature/v1 
 
     - name: Create release bundle
