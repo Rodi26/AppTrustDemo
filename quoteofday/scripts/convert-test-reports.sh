@@ -138,7 +138,7 @@ total_tests=0
 passed_tests=0
 failed_tests=0
 skipped_tests=0
-total_duration="0"
+total_duration=0
 test_details_json=""
 test_cases_json=""
 
@@ -165,8 +165,10 @@ for xml_file in $xml_files; do
     failed_tests=$((failed_tests + failures))
     skipped_tests=$((skipped_tests + skipped))
     
-    # Add duration using safe floating point addition
-    total_duration=$(add_floating_point "$total_duration" "$time")
+    # Add duration (extract integer part only)
+    time_int=${time%.*}
+    if [ -z "$time_int" ]; then time_int=0; fi
+    total_duration=$((total_duration + time_int))
     
     # Add test class details to JSON
     if [ -n "$test_details_json" ]; then
