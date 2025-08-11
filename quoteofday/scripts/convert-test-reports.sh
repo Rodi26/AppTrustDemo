@@ -69,19 +69,23 @@ add_floating_point() {
     local a="$1"
     local b="$2"
     
-    # Use bc for reliable floating point arithmetic
-    if command -v bc >/dev/null 2>&1; then
-        echo "scale=3; $a + $b" | bc -l 2>/dev/null || echo "0.000"
-    elif command -v awk >/dev/null 2>&1; then
-        echo "$a $b" | awk '{printf "%.3f", $1 + $2}'
-    else
-        # Fallback: simple integer addition (lose precision but avoid errors)
-        local a_int=${a%.*}
-        local b_int=${b%.*}
-        if [ -z "$a_int" ]; then a_int=0; fi
-        if [ -z "$b_int" ]; then b_int=0; fi
-        echo $((a_int + b_int))
-    fi
+    # Convert to integers (multiply by 1000 to preserve 3 decimal places)
+    local a_int=$(echo "$a" | sed 's/\.//' | sed 's/^0*//')
+    local b_int=$(echo "$b" | sed 's/\.//' | sed 's/^0*//')
+    
+    # Handle empty strings
+    if [ -z "$a_int" ]; then a_int=0; fi
+    if [ -z "$b_int" ]; then b_int=0; fi
+    
+    # Add integers
+    local result=$((a_int + b_int))
+    
+    # Convert back to decimal (divide by 1000)
+    local whole=$((result / 1000))
+    local decimal=$((result % 1000))
+    
+    # Format with leading zeros for decimal part
+    printf "%d.%03d" "$whole" "$decimal"
 }
 
 # Function to safely calculate percentage
