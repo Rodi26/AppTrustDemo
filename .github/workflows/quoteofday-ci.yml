@@ -87,9 +87,10 @@ jobs:
       run: |
         cd quoteofday
         # Build and push to JFrog Artifactory
-        docker buildx build --platform linux/amd64,linux/arm64 \
-          -t ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} .
-        jf docker push ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} --build-name quoteofday --build-number ${{ github.run_number }}  
+        jf docker buildx build --platform linux/amd64,linux/arm64 \
+          -t ${{ env.DOCKER_REGISTRY }}/quoteofday:${{ github.run_number }} \
+          --build-name quoteofday --build-number ${{ github.run_number }} \
+          --push .
 
         jf evd create --package-name quoteofday --package-version ${{ github.run_number }} --package-repo-name commons-dev-docker-local \
         --key "${{ secrets.PRIVATE_KEY }}" --key-alias CI-RSA-KEY \

@@ -1,22 +1,22 @@
 # Multi-stage build to create a clean runtime image
-FROM eclipse-temurin:21-jre as runtime
+FROM eclipse-temurin:21-jre AS runtime
 
-# Create non-root user for security
+# Create non-root user and set up environment in one layer
 RUN groupadd -r spring && \
-    useradd -r -g spring spring
+    useradd -r -g spring spring && \
+    mkdir -p /app && \
+    chown spring:spring /app
 
 # Set working directory
 WORKDIR /app
 
-# Install wget for health check
+# Install wget for health check in one layer
 RUN apt-get update && \
     apt-get install -y wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the JAR file from the build context
+# Copy the JAR file and set ownership in one layer
 COPY target/quote-of-day-service-*.jar app.jar
-
-# Set proper ownership
 RUN chown spring:spring /app/app.jar
 
 # Switch to non-root user
