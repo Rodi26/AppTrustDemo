@@ -78,6 +78,7 @@ jobs:
           -Dsonar.qualitygate.wait=true
           -Dsonar.organization=sela-org1
           -Dsonar.projectKey=sela-org1_evidence-test
+          -Dsonar.java.binaries=target/classes
 
     - name: Create Test Evidence JSON
       run: |
