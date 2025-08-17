@@ -80,6 +80,13 @@ jobs:
           -Dsonar.java.binaries=target/classes
           -Dsonar.qualitygate.wait=true
 
+    - name: Find txt files
+      run: |
+        cd quateofday
+        echo "Searching for txt files..."
+        find . -name '*.txt'
+        echo "Done searching for txt files."
+
     - name: Create Test Evidence JSON
       run: |
         cd quoteofday
