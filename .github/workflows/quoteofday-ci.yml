@@ -66,7 +66,7 @@ jobs:
     - name: Compile java for Sonar scan
       run: |
         cd quoteofday
-        mvn compile
+        mvn test-compile
       
     - name: Sonar scan
       uses: SonarSource/sonarqube-scan-action@v4
