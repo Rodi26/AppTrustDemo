@@ -97,12 +97,17 @@ jobs:
     - name: Get Sonar analysis result file
       continue-on-error: true
       run: |
+        set +e
         cd quoteofday
         SONAR_TASK_ID=${{ steps.sonar_task_id_step.outputs.sonar_task_id }}
         SONAR_TOKEN=${{ secrets.SONAR_TOKEN }}
         [ "" == "$SONAR_TASK_ID" ] && echo "Missing Sonar task ID."
         [ "" == "$SONAR_TOKEN" ] && echo "Missing Sonar token."
-        [ "" != "$SONAR_TASK_ID" ] && [ "" != "$SONAR_TOKEN" ] && wget -v -X GET -H "Authorization: Bearer $SONAR_TOKEN" -o sonar.result.json "https://sonarcloud.io/api/qualitygates/project_status?analysisId=$SONAR_TASK_ID" || echo "Did not wget the sonar results JSON."
+        [ "" != "$SONAR_TASK_ID" ] && [ "" != "$SONAR_TOKEN" ] && wget -v -X GET -H "Authorization: Bearer $SONAR_TOKEN" -o sonar.result.json "https://sonarcloud.io/api/qualitygates/project_status?analysisId=$SONAR_TASK_ID"
+        GET_RESULT_CODE=$?
+        [ -f sonar.result.json ] && echo "Sonar result:" && cat sonar.result.json || echo "No Sonar result JSON file created."
+        # If the output file contains only the returned error message delete it so the evidence creation step won't try to create an evidence out of it.
+        [ $GET_RESULT_CODE -ne 0 ] && rm sonar.result.json
 
     - name: Create Test Evidence JSON
       run: |

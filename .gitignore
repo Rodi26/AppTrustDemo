@@ -186,3 +186,7 @@ failsafe-reports/
 ehthumbs.db
 Icon?
 Thumbs.db
+
+
+sonar.result.json
+
