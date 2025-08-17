@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from transformers import MarianMTModel, MarianTokenizer
 import torch
 from typing import Optional
@@ -30,11 +31,42 @@ class TranslationService:
             raise
     
     def _load_model(self):
-        """Load the Hugging Face model and tokenizer"""
+        """Load the Hugging Face model and tokenizer from Artifactory"""
         try:
-            # Load tokenizer and model
-            self.tokenizer = MarianTokenizer.from_pretrained(self.model_name)
-            self.model = MarianMTModel.from_pretrained(self.model_name)
+            # Load tokenizer and model with caching and Artifactory configuration
+            cache_dir = "/app/models" if os.path.exists("/app/models") else None
+            
+            # Configure Hugging Face Hub to use Artifactory
+            import huggingface_hub
+            if os.getenv('HF_ENDPOINT'):
+                huggingface_hub.set_http_backend(os.getenv('HF_ENDPOINT'))
+            
+            # Load with token if available
+            token = os.getenv('HF_TOKEN')
+            if token:
+                self.tokenizer = MarianTokenizer.from_pretrained(
+                    self.model_name, 
+                    cache_dir=cache_dir,
+                    token=token,
+                    trust_remote_code=True
+                )
+                self.model = MarianMTModel.from_pretrained(
+                    self.model_name, 
+                    cache_dir=cache_dir,
+                    token=token,
+                    trust_remote_code=True
+                )
+            else:
+                self.tokenizer = MarianTokenizer.from_pretrained(
+                    self.model_name, 
+                    cache_dir=cache_dir,
+                    trust_remote_code=True
+                )
+                self.model = MarianMTModel.from_pretrained(
+                    self.model_name, 
+                    cache_dir=cache_dir,
+                    trust_remote_code=True
+                )
             
             # Set model to evaluation mode
             self.model.eval()
