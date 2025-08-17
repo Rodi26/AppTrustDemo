@@ -98,9 +98,11 @@ jobs:
       run: |
         cd quoteofday
         SONAR_TASK_ID=${{ steps.sonar_task_id_step.outputs.sonar_task_id }}
+        SONAR_TOKEN=${{ secrets.SONAR_TOKEN }}
         [ "" == "$SONAR_TASK_ID" ] && echo "Missing Sonar task ID."
         [ "" == "$SONAR_TOKEN" ] && echo "Missing Sonar token."
         [ "" != "$SONAR_TASK_ID" ] && [ "" != "$SONAR_TOKEN" ] && wget -X GET -H "Authorization: Bearer $SONAR_TOKEN" --url "https://sonarcloud.io/api/qualitygates/project_status?analysisId=$SONAR_TASK_ID" -o sonar.result.json
+        # To continue even when didn't get Sonar scan results
         echo ""
 
     - name: Create Test Evidence JSON
@@ -144,6 +146,8 @@ jobs:
         [ -f "quoteofday/sonar.result.json" ] || echo "sonar.result.json file is missing."
         [ -f "quoteofday/sonar.result.json" ] && jf evd create --package-name quoteofday --package-version ${{ github.run_number }} --package-repo-name commons-dev-docker-local \
           --predicate quoteofday/sonar.result.json --predicate-type sonar --provider-id sonar
+        # To continue even when evidence wasn't created
+        echo ""
           
     - name: Test Docker image
       run: |
