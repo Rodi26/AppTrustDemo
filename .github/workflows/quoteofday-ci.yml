@@ -45,12 +45,6 @@ jobs:
         JF_URL: ${{ vars.JF_URL }}
         JF_USER: ${{ vars.JF_USER }}
         JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-
-    - name: Simple evd
-      run: |
-        echo '{"user":"${{ github.actor }}", "date":"'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' > sign.json
-        jf evd create --subject-repo-path commons-dev-generic-local/file.txt \
-          --predicate sign.json --predicate-type https://jfrog.com/evidence/signature/v1 
       
     - name: Build and Deploy to Artifactory
       run: |
@@ -63,20 +57,12 @@ jobs:
         jf mvn deploy -q --batch-mode --no-transfer-progress --build-name quoteofday --build-number ${{ github.run_number }}
       
     - name: Create Test Evidence JSON
-      if: always()
       run: |
         cd quoteofday
-        echo "📊 Creating test evidence JSON..."
-        
-        # Create evidence directory
         mkdir -p evidence
         
         # Run the conversion script to create evidence file with markdown report
         ./scripts/convert-test-reports.sh target/surefire-reports 
-        
-        # Display the JSON file
-        echo "📄 Test Evidence JSON:"
-        cat test-evidence.json
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -101,12 +87,11 @@ jobs:
     - name: Evidence on docker image
       run: |
         echo "🔍 Creating evidence on docker image..."
-        echo $JFROG_CLI_KEY_ALIAS
-        echo '{"user":"${{ github.actor }}", "date":"'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' > sign.json
+        cd quoteofday
         jf evd create --package-name quoteofday --package-version ${{ github.run_number }} --package-repo-name commons-dev-docker-local \
-          --predicate ./sign.json --predicate-type https://jfrog.com/evidence/test-results/v1 
+          --predicate ./test-evidence.json --predicate-type https://jfrog.com/evidence/test-results/v1 \
+          --markdown ./test-evidence.md --provider-id junit
           
-
     - name: Test Docker image
       run: |
         cd quoteofday
