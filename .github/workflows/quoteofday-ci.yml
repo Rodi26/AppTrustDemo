@@ -83,9 +83,10 @@ jobs:
     - name: Find txt files
       run: |
         cd quoteofday
-        echo "Searching for txt files..."
-        find . -name '*.txt'
-        echo "Done searching for txt files."
+        echo "Searching for report-task.txt file..."
+        REPORT_TASK_FILE=$(find . -name 'report-task.txt' | head -n1)
+        [ -f "$REPORT_TASK_FILE" ] || echo "repot.task.txt file was not found."
+        [ -f "$REPORT_TASK_FILE" ] && cat "$REPORT_TASK_FILE"
 
     - name: Create Test Evidence JSON
       run: |
