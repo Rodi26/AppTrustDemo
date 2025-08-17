@@ -62,6 +62,11 @@ jobs:
         
         # Build and deploy to Artifactory
         jf mvn deploy -q --batch-mode --no-transfer-progress --build-name quoteofday --build-number ${{ github.run_number }}
+
+    - name: Compile java for Sonar scan
+      run: |
+        cd quoteofday
+        mvn compile
       
     - name: Sonar scan
       uses: SonarSource/sonarqube-scan-action@v4
