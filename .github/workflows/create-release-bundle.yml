@@ -84,19 +84,19 @@ jobs:
     - name: Create release bundle spec file
       id: create-spec
       run: |
-        # Extract version from path (remove the package name prefix)
-        QUOTEOFDAY_BUILD_NUMBER=$(echo "${{ steps.get-latest-builds.outputs.latest_quoteofday_build_number }}" 
-        AI_TRANSLATE_BUILD_NUMBER=$(echo "${{ steps.get-latest-builds.outputs.latest_ai_translate_build_number }}" 
+        # Get build numbers from previous step
+        QUOTEOFDAY_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_quoteofday_build_number }}"
+        AI_TRANSLATE_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_ai_translate_build_number }}" 
         
         # Create the spec.json file
         cat > spec.json << EOF
         {
             "files": [
                 {
-                    "build": "quoteofday/$QUOTEOFDAY_BUILD_NUMBER",
+                    "build": "quoteofday/$QUOTEOFDAY_BUILD_NUMBER"
                 },
                 {
-                    "build": "ai-translate/$AI_TRANSLATE_BUILD_NUMBER",
+                    "build": "ai-translate/$AI_TRANSLATE_BUILD_NUMBER"
                 }
             ]
         }
