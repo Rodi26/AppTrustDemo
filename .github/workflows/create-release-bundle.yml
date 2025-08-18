@@ -1,6 +1,9 @@
 name: Create Release Bundle
 
 on:
+  push:
+    paths:
+      - '.github/workflows/create-release-bundle.yml'
   workflow_dispatch:
 
 jobs:
