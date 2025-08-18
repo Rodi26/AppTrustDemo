@@ -50,8 +50,8 @@ jobs:
       run: |
         pip cache purge
 
-  build-amd64:
-    name: Build AMD64 Image
+  build:
+    name: Build Docker Image
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -77,70 +77,22 @@ jobs:
         echo ${{ secrets.JF_ACCESS_TOKEN }} | docker login -u ${{ vars.JF_USER }} --password-stdin ${{ env.DOCKER_REGISTRY }}
         echo "✅ Successfully logged into Docker registry"
       
-    - name: Build and Push AMD64 Docker image
+    - name: Build and Push Docker image
       run: |
         cd translate
-        # Build only AMD64 to save space
+        # Build single platform AMD64 image
         jf docker buildx build --platform linux/amd64 \
-          --cache-from type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache-amd64 \
-          --cache-to type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache-amd64,mode=max \
+          --cache-from type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache \
+          --cache-to type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache,mode=max \
           --build-arg HF_HUB_ETAG_TIMEOUT=${{ env.HF_HUB_ETAG_TIMEOUT }} \
           --build-arg HF_HUB_DOWNLOAD_TIMEOUT=${{ env.HF_HUB_DOWNLOAD_TIMEOUT }} \
           --build-arg HF_ENDPOINT=${{ env.HF_ENDPOINT }} \
           --build-arg HF_TOKEN=${{ env.HF_TOKEN }} \
-          --tag ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}-amd64 \
-          --metadata-file=build-metadata-amd64 --output=type=image --push .
+          --tag ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }} \
+          --tag ${{ env.DOCKER_REGISTRY }}/ai-translate:latest \
+          --metadata-file=build-metadata --output=type=image --push .
         jf rt build-docker-create commons-dev-docker-local  \
-          --image-file build-metadata-amd64 --build-name ai-translate-amd64 --build-number ${{ github.run_number }}
-
-    - name: Cleanup Docker
-      run: |
-        docker system prune -f
-        docker builder prune -f
-
-  build-arm64:
-    name: Build ARM64 Image
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      with:
-        version: latest
-      env:
-        JF_URL: ${{ vars.JF_URL }}
-        JF_USER: ${{ vars.JF_USER }}
-        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      
-    - name: Login to Docker Registry
-      run: |
-        echo "🔐 Logging into JFrog Artifactory Docker registry..."
-        echo "Registry: ${{ env.DOCKER_REGISTRY }}"
-        echo ${{ secrets.JF_ACCESS_TOKEN }} | docker login -u ${{ vars.JF_USER }} --password-stdin ${{ env.DOCKER_REGISTRY }}
-        echo "✅ Successfully logged into Docker registry"
-      
-    - name: Build and Push ARM64 Docker image
-      run: |
-        cd translate
-        # Build ARM64 using CPU-only PyTorch for faster builds
-        jf docker buildx build --platform linux/arm64 \
-          --file Dockerfile.arm64 \
-          --cache-from type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache-arm64 \
-          --cache-to type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache-arm64,mode=max \
-          --build-arg HF_HUB_ETAG_TIMEOUT=${{ env.HF_HUB_ETAG_TIMEOUT }} \
-          --build-arg HF_HUB_DOWNLOAD_TIMEOUT=${{ env.HF_HUB_DOWNLOAD_TIMEOUT }} \
-          --build-arg HF_ENDPOINT=${{ env.HF_ENDPOINT }} \
-          --build-arg HF_TOKEN=${{ env.HF_TOKEN }} \
-          --tag ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}-arm64 \
-          --metadata-file=build-metadata-arm64 --output=type=image --push .
-        jf rt build-docker-create commons-dev-docker-local  \
-          --image-file build-metadata-arm64 --build-name ai-translate-arm64 --build-number ${{ github.run_number }}
+          --image-file build-metadata --build-name ai-translate --build-number ${{ github.run_number }}
 
     - name: Cleanup Docker
       run: |
@@ -150,7 +102,7 @@ jobs:
   publish:
     name: Publish and Create Evidence
     runs-on: ubuntu-latest
-    needs: [build-amd64, build-arm64]
+    needs: build
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -164,18 +116,11 @@ jobs:
         JF_USER: ${{ vars.JF_USER }}
         JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-    - name: Create multi-platform manifest
+    - name: Verify Docker image
       run: |
-        echo "🔗 Creating multi-platform manifest..."
-        docker manifest create ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }} \
-          ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}-amd64 \
-          ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}-arm64
-        docker manifest push ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}
-        
-        docker manifest create ${{ env.DOCKER_REGISTRY }}/ai-translate:latest \
-          ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}-amd64 \
-          ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}-arm64
-        docker manifest push ${{ env.DOCKER_REGISTRY }}/ai-translate:latest
+        echo "🔍 Verifying Docker image..."
+        docker pull ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}
+        docker images ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}
 
     - name: Evidence on docker image
       run: |
