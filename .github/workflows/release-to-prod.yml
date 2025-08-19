@@ -43,14 +43,14 @@ jobs:
         echo "🚀 Promoting release bundle quotopia version $LATEST_QA_VERSION from QA to PROD..."
         
         # Promote the release bundle from QA to PROD
-        jf release-bundle-promote quotopia $LATEST_DEV_VERSION QA PROD
+        jf release-bundle-promote quotopia $LATEST_QA_VERSION PROD
         
         if [ $? -eq 0 ]; then
           echo "✅ Successfully released quotopia version $LATEST_QA_VERSION to PROD"
           
           # Create a link to the QA release bundle
           QA_LINK="${{ vars.JF_URL }}/ui/artifactory/lifecycle?bundleName=quotopia&releaseBundleVersion=$LATEST_QA_VERSION&repositoryKey=release-bundles-v2&activeVersionTab=Evidence%20Graph"
-          echo "🔗 PROD Release Bundle: [quotopia:$LATEST_DEV_VERSION QA]($QA_LINK)" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 PROD Release Bundle: [quotopia:$LATEST_QA_VERSION QA]($QA_LINK)" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ Failed to release quotopia version $LATEST_QA_VERSION to PROD"
           exit 1
