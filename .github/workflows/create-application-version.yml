@@ -49,6 +49,7 @@ jobs:
           if [ "" != "$LATEST_VER" ]; then
               echo "latest_ver=$LATEST_VER" >> $GITHUB_OUTPUT
           else 
+              echo "Setting the latest_ver to 0"
               echo "latest_ver=0" >> $GITHUB_OUTPUT
           fi
 
@@ -73,6 +74,8 @@ jobs:
           echo "STATUS_CODE=$STATUS_CODE"
           if [ "201" != "$STATUS_CODE" ]; then 
               echo "Status code is not 201: $STATUS_CODE"
+              # Running the request again without silent and output flags to see details about the problem 
+              curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/?async=false"
               exit 1
           fi
           echo "app_ver=$NEXT_VER" >> $GITHUB_OUTPUT
