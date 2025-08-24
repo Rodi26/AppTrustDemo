@@ -1,4 +1,4 @@
-name: Create Release Bundle
+name: Create Application Version
 
 on:
   workflow_dispatch:
