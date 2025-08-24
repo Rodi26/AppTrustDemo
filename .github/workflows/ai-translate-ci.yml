@@ -112,11 +112,12 @@ jobs:
         image: ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}
         fail-build: false
         output-format: cyclonedx-json
+        output-file: grype-output.json
 
     - name: Create evidence from Grype scan result
       run: |
         jf evd create --package-name ai-translate --package-version ${{ github.run_number }} --package-repo-name commons-dev-docker-local \
-          --predicate ${{ steps.grype.outputs.json }} --provider-id anchore --predicate-type https://anchore.com/evidence/grype/v1
+          --predicate grype-output.json --provider-id anchore --predicate-type https://anchore.com/evidence/grype/v1
 
     - name: Publish buildinfo
       run: |
