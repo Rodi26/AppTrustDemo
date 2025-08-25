@@ -191,7 +191,7 @@ jobs:
 
     - name: Create evidence from the e2e test results
       run: |
-        jf evd create --release-bundle-name quotopia --release-bundle-version ${{ steps.get-latest-dev-version.outputs.latest_dev_version }} \
+        jf evd create --release-bundle quotopia --release-bundle-version ${{ steps.get-latest-dev-version.outputs.latest_dev_version }} \
           --predicate e2e-test-results.json --provider-id jfrog --predicate-type https://jfrog.com/evidence/e2e-test/v1
           
 
