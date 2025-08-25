@@ -40,8 +40,8 @@ services:
     environment:
       - QUOTE_SERVICE_URL=http://quote-service:8080
       - TRANSLATION_SERVICE_URL=http://translation-service:8000
-                volumes:
-              - ./e2e-tests:/app/tests
+    volumes:
+      - ./e2e-tests:/app/tests
     working_dir: /app/tests
     command: |
       sh -c "
