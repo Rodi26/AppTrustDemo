@@ -36,28 +36,28 @@ jobs:
         echo "latest_dev_version=$LATEST_DEV_VERSION" >> $GITHUB_OUTPUT
         echo "Found latest DEV release bundle version: $LATEST_DEV_VERSION"
     
-    - name: Promote to QA
-      run: |
-        LATEST_DEV_VERSION="${{ steps.get-latest-dev-version.outputs.latest_dev_version }}"
+    # - name: Promote to QA
+    #   run: |
+    #     LATEST_DEV_VERSION="${{ steps.get-latest-dev-version.outputs.latest_dev_version }}"
         
-        echo "🚀 Promoting release bundle quotopia version $LATEST_DEV_VERSION from DEV to QA..."
+    #     echo "🚀 Promoting release bundle quotopia version $LATEST_DEV_VERSION from DEV to QA..."
         
-        # Promote the release bundle from DEV to QA
-        jf release-bundle-promote quotopia $LATEST_DEV_VERSION QA
+    #     # Promote the release bundle from DEV to QA
+    #     jf release-bundle-promote quotopia $LATEST_DEV_VERSION QA
         
-        if [ $? -eq 0 ]; then
-          echo "✅ Successfully promoted quotopia version $LATEST_DEV_VERSION to QA"
+    #     if [ $? -eq 0 ]; then
+    #       echo "✅ Successfully promoted quotopia version $LATEST_DEV_VERSION to QA"
           
-          # Create a link to the QA release bundle
-          QA_LINK="${{ vars.JF_URL }}/ui/artifactory/lifecycle?bundleName=quotopia&releaseBundleVersion=$LATEST_DEV_VERSION&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
-          echo "🥡 QA Release Bundle: [quotopia:$LATEST_DEV_VERSION]($QA_LINK)" >> $GITHUB_STEP_SUMMARY
+    #       # Create a link to the QA release bundle
+    #       QA_LINK="${{ vars.JF_URL }}/ui/artifactory/lifecycle?bundleName=quotopia&releaseBundleVersion=$LATEST_DEV_VERSION&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
+    #       echo "🥡 QA Release Bundle: [quotopia:$LATEST_DEV_VERSION]($QA_LINK)" >> $GITHUB_STEP_SUMMARY
           
-          # Store the version for the E2E test job
-          echo "LATEST_QA_VERSION=$LATEST_DEV_VERSION" >> $GITHUB_ENV
-        else
-          echo "❌ Failed to promote quotopia version $LATEST_DEV_VERSION to QA"
-          exit 1
-        fi
+    #       # Store the version for the E2E test job
+    #       echo "LATEST_QA_VERSION=$LATEST_DEV_VERSION" >> $GITHUB_ENV
+    #     else
+    #       echo "❌ Failed to promote quotopia version $LATEST_DEV_VERSION to QA"
+    #       exit 1
+    #     fi
 
      
     - name: Setup Docker Buildx
@@ -70,19 +70,55 @@ jobs:
         LATEST_QA_VERSION="${{ env.LATEST_QA_VERSION }}"
         echo "Testing with QA version: $LATEST_QA_VERSION"
         
-        # Get Docker image tags from QA repository using AQL
-        QUOTE_IMAGE_TAG=$(curl -s -X POST \
+        # Get Docker image tags from QA repository using AQL with better error handling
+        echo "🔍 Searching for quote service images..."
+        QUOTE_RESPONSE=$(curl -s -X POST \
           -H "Authorization: Bearer ${{ secrets.JF_ACCESS_TOKEN }}" \
           -H "Content-Type: text/plain" \
           -d 'items.find({"repo": "commons-qa-docker-local", "name": "list.manifest.json", "path": {"$match": "quoteofday/*"}).sort({"$desc": ["created"]}).limit(1)' \
-            "${{ vars.JF_URL }}/artifactory/api/search/aql" | jq -r '.results[0].path | split("/") | .[1]' )
+            "${{ vars.JF_URL }}/artifactory/api/search/aql")
         
-        TRANSLATION_IMAGE_TAG=$(curl -s -X POST \
+        echo "Quote API Response: $QUOTE_RESPONSE"
+        
+        if [ -z "$QUOTE_RESPONSE" ] || [ "$QUOTE_RESPONSE" = "null" ]; then
+          echo "❌ No quote service images found in QA repository"
+          exit 1
+        fi
+        
+        QUOTE_IMAGE_TAG=$(echo "$QUOTE_RESPONSE" | jq -r '.results[0].path | split("/") | .[1] // empty')
+        
+        if [ -z "$QUOTE_IMAGE_TAG" ]; then
+          echo "❌ Failed to extract quote image tag from response"
+          echo "Response: $QUOTE_RESPONSE"
+          exit 1
+        fi
+        
+        echo "✅ Found quote service image tag: $QUOTE_IMAGE_TAG"
+        
+        echo "🔍 Searching for translation service images..."
+        TRANSLATION_RESPONSE=$(curl -s -X POST \
           -H "Authorization: Bearer ${{ secrets.JF_ACCESS_TOKEN }}" \
           -H "Content-Type: text/plain" \
           -d 'items.find({"repo": "commons-qa-docker-local", "name": "list.manifest.json", "path": {"$match": "ai-translate/*"}).sort({"$desc": ["created"]}).limit(1)' \
-            "${{ vars.JF_URL }}/artifactory/api/search/aql" | jq -r '.results[0].path | split("/") | .[1]' )
-    
+            "${{ vars.JF_URL }}/artifactory/api/search/aql")
+        
+        echo "Translation API Response: $TRANSLATION_RESPONSE"
+        
+        if [ -z "$TRANSLATION_RESPONSE" ] || [ "$TRANSLATION_RESPONSE" = "null" ]; then
+          echo "❌ No translation service images found in QA repository"
+          exit 1
+        fi
+        
+        TRANSLATION_IMAGE_TAG=$(echo "$TRANSLATION_RESPONSE" | jq -r '.results[0].path | split("/") | .[1] // empty')
+        
+        if [ -z "$TRANSLATION_IMAGE_TAG" ]; then
+          echo "❌ Failed to extract translation image tag from response"
+          echo "Response: $TRANSLATION_RESPONSE"
+          exit 1
+        fi
+        
+        echo "✅ Found translation service image tag: $TRANSLATION_IMAGE_TAG"
+
         echo "quote_image_tag=$QUOTE_IMAGE_TAG" >> $GITHUB_OUTPUT
         echo "translation_image_tag=$TRANSLATION_IMAGE_TAG" >> $GITHUB_OUTPUT
         
