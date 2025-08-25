@@ -5,7 +5,7 @@ on:
 
 jobs:
   promote-to-qa:
-    name: Promote Latest DEV Release Bundle to QA
+    name: Promote to QA and run E2E tests
     runs-on: ubuntu-latest
     
     steps:
@@ -163,7 +163,7 @@ jobs:
           "test_run": {
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "workflow": "promote-to-qa",
-            "qa_version": "${{ env.LATEST_QA_VERSION }}",
+            "qa_version": "${{ steps.get-latest-dev-version.outputs.latest_dev_version }},
             "quote_service_image": "evidencetrial.jfrog.io/commons-qa-docker-local/quoteofday:${{ steps.get-images.outputs.quote_image_tag }}",
             "translation_service_image": "evidencetrial.jfrog.io/commons-qa-docker-local/ai-translate:${{ steps.get-images.outputs.translation_image_tag }}",
             "environment": "qa",
@@ -185,7 +185,13 @@ jobs:
         
         echo "📊 Test results saved to e2e-test-results.json"
         cat e2e-test-results.json | jq .
-        
+
+    - name: Create evidence from the e2e test results
+      run: |
+        jf evd create --release-bundle-name quotopia --release-bundle-version ${{ steps.get-latest-dev-version.outputs.latest_dev_version }} \
+          --predicate e2e-test-results.json --provider-id jfrog --predicate-type https://jfrog.com/evidence/e2e-test/v1
+          
+
     - name: Cleanup
       if: always()
       run: |
