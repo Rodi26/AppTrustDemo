@@ -137,10 +137,10 @@ jobs:
                 cat response.json
                 exit 1                                                              
               fi                                                                    
-              echo "Response:"                                                      
-              cat response.json                                                     
-              echo
-              SCAN_STATUS=$(cat response.json | jq '.overall.status')
+              #echo "Response:"                                                      
+              #cat response.json                                                     
+              #echo
+              SCAN_STATUS=$(cat response.json | jq '.overall.status'| tr -d \")
               echo "SCAN_STATUS=$SCAN_STATUS"
               [ "PENDING" == "$SCAN_STATUS" -o "SCANNING" == "$SCAN_STATUS" ] && echo "Scan in progress. Waiting $WAIT_SECONDS seconds..." && sleep "$WAIT_SECONDS" && continue
               [ "DONE" == "$SCAN_STATUS" ] && echo "Scan done." && mv response.json quoteofday.xray.result.json && break
