@@ -29,25 +29,25 @@ services:
       retries: 5
       start_period: 60s
       
-            e2e-tests:
-            image: cypress/included:13.6.0
-            container_name: e2e-test-runner-qa
-            depends_on:
-              quote-service:
-                condition: service_healthy
-              translation-service:
-                condition: service_healthy
-            environment:
-              - QUOTE_SERVICE_URL=http://quote-service:8080
-              - TRANSLATION_SERVICE_URL=http://translation-service:8000
-            volumes:
-              - ./e2e-tests:/app/tests
-            working_dir: /app/tests
-            command: |
-              sh -c "
-                npm install &&
-                npm run test
-              "
+  e2e-tests:
+    image: cypress/included:13.6.0
+    container_name: e2e-test-runner-qa
+    depends_on:
+      quote-service:
+        condition: service_healthy
+      translation-service:
+        condition: service_healthy
+    environment:
+      - QUOTE_SERVICE_URL=http://quote-service:8080
+      - TRANSLATION_SERVICE_URL=http://translation-service:8000
+    volumes:
+      - ./e2e-tests:/app/tests
+    working_dir: /app/tests
+    command: |
+      sh -c "
+        npm install &&
+        npm run test
+      "
       
 volumes:
   model-cache:
