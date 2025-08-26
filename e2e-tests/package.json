@@ -1,0 +1,14 @@
+{
+  "name": "e2e-tests",
+  "version": "1.0.0",
+  "description": "E2E tests using Cypress",
+  "scripts": {
+    "cypress:run": "cypress run",
+    "cypress:open": "cypress open",
+    "test": "cypress run --reporter json --reporter-options outputFile=cypress/results/results.json --spec 'cypress/e2e/**/*.cy.js'",
+    "convert-results": "node convert-cypress-results.js"
+  },
+  "devDependencies": {
+    "cypress": "^13.6.0"
+  }
+}
