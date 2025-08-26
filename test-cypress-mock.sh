@@ -116,7 +116,7 @@ EOF
 
 # Run Cypress tests against mock server
 echo "🧪 Running Cypress tests against mock server..."
-npx cypress run --config-file cypress.config.mock.js
+npx cypress run --config-file cypress.config.mock.js --reporter json --reporter-options outputFile=cypress-results.json
 
 # Check results
 if [ $? -eq 0 ]; then
@@ -132,16 +132,22 @@ else
     echo "❌ Cypress tests failed!"
 fi
 
+# Keep the results file for inspection
+if [ -f "cypress-results.json" ]; then
+    echo "📄 Cypress results file preserved for inspection"
+    echo "📊 Results file location: $(pwd)/cypress-results.json"
+    echo "📋 Results file content:"
+    cat cypress-results.json
+else
+    echo "❌ Cypress results file not found"
+    echo "🔍 Checking for any result files:"
+    find . -name "*results*" -type f 2>/dev/null || echo "No result files found"
+fi
+
 # Cleanup
 echo ""
 echo "🧹 Cleaning up..."
 kill $MOCK_PID 2>/dev/null || true
 rm -f mock-server.js cypress.config.mock.js
-
-# Keep the results file for inspection
-if [ -f "cypress-results.json" ]; then
-    echo "📄 Cypress results file preserved for inspection"
-    echo "📊 Results file location: $(pwd)/cypress-results.json"
-fi
 
 echo "✅ Mock service test completed!"

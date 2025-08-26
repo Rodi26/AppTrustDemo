@@ -214,15 +214,27 @@ jobs:
 
     - name: Create evidence from the e2e test results
       run: |
-        # Check if results file exists and copy it to a known location
+        # Check if results file exists and clean it for valid JSON
         if [ -f "e2e-tests/cypress-results.json" ]; then
           echo "✅ Cypress results file found"
-          cp e2e-tests/cypress-results.json cypress-results.json
-          cat cypress-results.json
+          # Extract only the JSON part (between { and }) to ensure valid JSON
+          sed -n '/^{/,/^}/p' e2e-tests/cypress-results.json > clean-cypress-results.json
+          
+          # Validate the JSON
+          if jq empty clean-cypress-results.json 2>/dev/null; then
+            echo "✅ Valid JSON extracted"
+            cp clean-cypress-results.json cypress-results.json
+          else
+            echo "❌ Invalid JSON, creating empty results"
+            echo '{"runs": [{"stats": {"tests": 0, "passes": 0, "failures": 0, "duration": 0}}]}' > cypress-results.json
+          fi
         else
           echo "❌ Cypress results file not found, creating empty results"
           echo '{"runs": [{"stats": {"tests": 0, "passes": 0, "failures": 0, "duration": 0}}]}' > cypress-results.json
         fi
+        
+        echo "📋 Using cleaned JSON for evidence creation:"
+        cat cypress-results.json
         
         jf evd create --release-bundle quotopia --release-bundle-version ${{ steps.get-latest-dev-version.outputs.latest_dev_version }} \
           --predicate cypress-results.json --provider-id cypress --predicate-type https://cypress.io/evidence/e2e/v1
@@ -232,7 +244,7 @@ jobs:
       if: always()
       run: |
         # Clean up generated files and containers
-        rm -f e2e-test-compose.yml
+        rm -f e2e-test-compose.yml cypress-results.json clean-cypress-results.json
         docker compose -f e2e-test-compose.yml down -v 2>/dev/null || true
         docker system prune -f
         
