@@ -76,6 +76,16 @@ jobs:
         echo "📋 Using DEV version $LATEST_DEV_VERSION for QA testing (no promotion)"
         echo "LATEST_QA_VERSION=$LATEST_DEV_VERSION" >> $GITHUB_ENV
       
+    - name: Cache npm dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          e2e-tests/node_modules
+          ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('e2e-tests/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-
+
     - name: Login to Docker Registry
       run: |
         echo "🔐 Logging into JFrog Artifactory Docker registry..."

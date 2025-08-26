@@ -42,15 +42,15 @@ services:
       - TRANSLATION_SERVICE_URL=http://translation-service:8000
     volumes:
       - ./e2e-tests:/app/tests
+      - npm-cache:/root/.npm
+      - cypress-cache:/root/.cache/Cypress
     working_dir: /app/tests
-    command: |
-      sh -c "
-        npm install &&
-        npm run test
-      "
+    command: sh -c "npm ci --cache /root/.npm --prefer-offline && npm run test"
       
 volumes:
   model-cache:
+  npm-cache:
+  cypress-cache:
     
 networks:
   default:
