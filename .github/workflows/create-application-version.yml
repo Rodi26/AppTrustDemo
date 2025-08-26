@@ -56,22 +56,26 @@ jobs:
           AI_TRANSLATE_BODY="{\"build_name\":\"ai-translate\", \"build_number\":\"$AI_TRANSLATE_BUILD_NUMBER\"}"
 
           echo "Starting Xray scan $QUOTEOFDAY_BODY" 
-          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$QUOTEOFDAY_BODY" "$JF_URL/xray/api/v2/ci/build")
+          STATUS_CODE=$(curl -o response.json -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$QUOTEOFDAY_BODY" "$JF_URL/xray/api/v2/ci/build")
           echo "STATUS_CODE=$STATUS_CODE"
           if [ "200" != "$STATUS_CODE" ]; then
             echo "Status is not 200"
             curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$QUOTEOFDAY_BODY" "$JF_URL/xray/api/v2/ci/build"
             exit 1
           fi
+          echo "Response:"
+          cat response.json
 
           echo "Starting Xray scan $AI_TRANSLATE_BODY" 
-          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$AI_TRANSLATE_BODY" "$JF_URL/xray/api/v2/ci/build")
+          STATUS_CODE=$(curl -o response.json -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$AI_TRANSLATE_BODY" "$JF_URL/xray/api/v2/ci/build")
           echo "STATUS_CODE=$STATUS_CODE"
           if [ "200" != "$STATUS_CODE" ]; then
             echo "Status is not 200"
             curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$AI_TRANSLATE_BODY" "$JF_URL/xray/api/v2/ci/build"
             exit 1
           fi
+          echo "Response:"
+          cat response.json
 
       - name: Create an application version
         id: create_app_ver
