@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Read Cypress results
-const cypressResultsPath = path.join(__dirname, 'cypress/results/results.json');
+const cypressResultsPath = path.join(__dirname, 'cypress-results.json');
 const outputPath = path.join(__dirname, 'cypress-results-converted.json');
 
 if (!fs.existsSync(cypressResultsPath)) {

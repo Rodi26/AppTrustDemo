@@ -9,7 +9,7 @@ module.exports = defineConfig({
     screenshotOnRunFailure: false,
     reporter: 'json',
     reporterOptions: {
-      outputFile: 'cypress/results/results.json'
+      outputFile: 'cypress-results.json'
     },
     env: {
       quoteServiceUrl: 'http://quote-service:8080',
@@ -26,6 +26,6 @@ module.exports = defineConfig({
   },
   reporter: 'json',
   reporterOptions: {
-    outputFile: 'cypress/results/results.json'
+    outputFile: 'cypress-results.json'
   }
 })

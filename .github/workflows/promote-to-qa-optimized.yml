@@ -1,4 +1,4 @@
-name: Promote to QA
+name: Promote to QA (Optimized)
 
 on:
   workflow_dispatch:
@@ -67,7 +67,7 @@ jobs:
         else
           echo "❌ Failed to promote quotopia version $LATEST_DEV_VERSION to QA"
           exit 1
-                fi
+        fi
 
     - name: Set QA version (when promotion is skipped)
       if: ${{ inputs.promote_to_qa != 'true' }}
@@ -89,7 +89,6 @@ jobs:
     - name: Login to Docker Registry
       run: |
         echo "🔐 Logging into JFrog Artifactory Docker registry..."
-        echo "Registry: ${{ vars.JF_URL }}"
         echo ${{ secrets.JF_ACCESS_TOKEN }} | docker login -u ${{ vars.JF_USER }} --password-stdin ${{ vars.JF_URL }}
         echo "✅ Successfully logged into Docker registry"
         
@@ -108,8 +107,6 @@ jobs:
           -d 'items.find({"repo": "commons-qa-docker-local", "name": "list.manifest.json", "path": {"$match": "quoteofday/*"}}).sort({"$desc": ["created"]}).limit(1)' \
             "${{ vars.JF_URL }}/artifactory/api/search/aql")
         
-        echo "Quote API Response: $QUOTE_RESPONSE"
-        
         if [ -z "$QUOTE_RESPONSE" ] || [ "$QUOTE_RESPONSE" = "null" ]; then
           echo "❌ No quote service images found in QA repository"
           exit 1
@@ -119,7 +116,6 @@ jobs:
         
         if [ -z "$QUOTE_IMAGE_TAG" ]; then
           echo "❌ Failed to extract quote image tag from response"
-          echo "Response: $QUOTE_RESPONSE"
           exit 1
         fi
         
@@ -132,8 +128,6 @@ jobs:
           -d 'items.find({"repo": "commons-qa-docker-local", "name": "list.manifest.json", "path": {"$match": "ai-translate/*"}}).sort({"$desc": ["created"]}).limit(1)' \
             "${{ vars.JF_URL }}/artifactory/api/search/aql")
         
-        echo "Translation API Response: $TRANSLATION_RESPONSE"
-        
         if [ -z "$TRANSLATION_RESPONSE" ] || [ "$TRANSLATION_RESPONSE" = "null" ]; then
           echo "❌ No translation service images found in QA repository"
           exit 1
@@ -143,7 +137,6 @@ jobs:
         
         if [ -z "$TRANSLATION_IMAGE_TAG" ]; then
           echo "❌ Failed to extract translation image tag from response"
-          echo "Response: $TRANSLATION_RESPONSE"
           exit 1
         fi
         
@@ -168,9 +161,17 @@ jobs:
         echo "Generated Docker Compose file:"
         cat e2e-test-compose.yml
         
-    - name: Run E2E tests
+    - name: Run E2E tests (Optimized)
       run: |
-        # Start services and run tests
+        # Start services and run tests with optimized settings
+        echo "🚀 Starting optimized E2E tests..."
+        
+        # Pull images in parallel for faster startup
+        docker pull evidencetrial.jfrog.io/commons-qa-docker-local/quoteofday:${{ steps.get-images.outputs.quote_image_tag }} &
+        docker pull evidencetrial.jfrog.io/commons-qa-docker-local/ai-translate:${{ steps.get-images.outputs.translation_image_tag }} &
+        wait
+        
+        # Start services with optimized health checks
         docker compose -f e2e-test-compose.yml up --abort-on-container-exit
         
         # Check if tests passed
@@ -205,7 +206,7 @@ jobs:
               "health": "$(curl -s http://localhost:8000/health | jq -r '.status' 2>/dev/null || echo 'unknown')"
             }
           },
-                      "test_results": $(cat e2e-tests/cypress-results.json 2>/dev/null || echo '{"runs": [{"stats": {"tests": 0, "passes": 0, "failures": 0, "duration": 0}}]}')
+          "test_results": $(cat e2e-tests/cypress-results.json 2>/dev/null || echo '{"runs": [{"stats": {"tests": 0, "passes": 0, "failures": 0, "duration": 0}}]}')
         }
         EOF
         
@@ -218,7 +219,6 @@ jobs:
         if [ -f "e2e-tests/cypress-results.json" ]; then
           echo "✅ Cypress results file found"
           cp e2e-tests/cypress-results.json cypress-results.json
-          cat cypress-results.json
         else
           echo "❌ Cypress results file not found, creating empty results"
           echo '{"runs": [{"stats": {"tests": 0, "passes": 0, "failures": 0, "duration": 0}}]}' > cypress-results.json
@@ -226,13 +226,11 @@ jobs:
         
         jf evd create --release-bundle quotopia --release-bundle-version ${{ steps.get-latest-dev-version.outputs.latest_dev_version }} \
           --predicate cypress-results.json --provider-id cypress --predicate-type https://cypress.io/evidence/e2e/v1
-          
 
     - name: Cleanup
       if: always()
       run: |
         # Clean up generated files and containers
-        rm -f e2e-test-compose.yml
+        rm -f e2e-test-compose.yml cypress-results.json
         docker compose -f e2e-test-compose.yml down -v 2>/dev/null || true
         docker system prune -f
-        

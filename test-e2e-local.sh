@@ -51,9 +51,9 @@ if [ $? -eq 0 ]; then
     echo "✅ E2E tests completed successfully!"
     
     # Check if results file exists
-    if [ -f "e2e-tests/cypress/results/results.json" ]; then
+    if [ -f "e2e-tests/cypress-results.json" ]; then
         echo "📊 Test results found:"
-        cat e2e-tests/cypress/results/results.json | jq '.runs[0].stats' 2>/dev/null || echo "   Results file exists but couldn't parse JSON"
+        cat e2e-tests/cypress-results.json | jq '.runs[0].stats' 2>/dev/null || echo "   Results file exists but couldn't parse JSON"
     else
         echo "⚠️  No test results file found"
     fi

@@ -94,7 +94,7 @@ module.exports = defineConfig({
     screenshotOnRunFailure: false,
     reporter: 'json',
     reporterOptions: {
-      outputFile: 'cypress/results/results.json'
+      outputFile: 'cypress-results.json'
     },
     env: {
       quoteServiceUrl: 'http://localhost:3000',
@@ -109,7 +109,7 @@ module.exports = defineConfig({
   },
   reporter: 'json',
   reporterOptions: {
-    outputFile: 'cypress/results/results.json'
+          outputFile: 'cypress-results.json'
   }
 })
 EOF
@@ -123,9 +123,9 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "✅ Cypress tests completed successfully!"
     
-    if [ -f "cypress/results/results.json" ]; then
+    if [ -f "cypress-results.json" ]; then
         echo "📊 Test results:"
-        cat cypress/results/results.json | jq '.runs[0].stats' 2>/dev/null || echo "   Results file exists but couldn't parse JSON"
+        cat cypress-results.json | jq '.runs[0].stats' 2>/dev/null || echo "   Results file exists but couldn't parse JSON"
     fi
 else
     echo ""

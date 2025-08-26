@@ -56,7 +56,7 @@ try {
   console.log('✅ Cypress E2E tests completed successfully!');
   
   // Generate test summary
-  const resultsPath = path.join(__dirname, 'cypress/results/results.json');
+  const resultsPath = path.join(__dirname, 'cypress-results.json');
   if (fs.existsSync(resultsPath)) {
     const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
     
