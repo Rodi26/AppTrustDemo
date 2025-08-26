@@ -46,6 +46,33 @@ jobs:
           echo "latest_ai_translate_build_number=$LATEST_AI_TRANSLATE_BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "Found latest ai-translate build number: $LATEST_AI_TRANSLATE_BUILD_NUMBER"
 
+      - name: Start Xray scan on builds
+        run: |
+          set +e
+          QUOTEOFDAY_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_quoteofday_build_number }}"
+          AI_TRANSLATE_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_ai_translate_build_number }}"
+          
+          QUOTEOFDAY_BODY="{\"build_name\":\"quoteofday\", \"build_number\":\"$QUOTEOFDAY_BUILD_NUMBER\""}"
+          AI_TRANSLATE_BODY="{\"build_name\":\"ai-translate\", \"build_number\":\"$AI_TRANSLATE_BUILD_NUMBER\""}"
+
+          echo "Starting Xray scan $QUOTEOFDAY_BODY" 
+          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$QUOTEOFDAY_BODY" "$JF_URL/xray/api/v2/ci/build")
+          echo "STATUS_CODE=$STATUS_CODE"
+          if [ "200" != "$STATUS_CODE" ]; then
+            echo "Status is not 200"
+            curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$QUOTEOFDAY_BODY" "$JF_URL/xray/api/v2/ci/build"
+            exit 1
+          fi
+
+          echo "Starting Xray scan $AI_TRANSLATE_BODY" 
+          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$AI_TRANSLATE_BODY" "$JF_URL/xray/api/v2/ci/build")
+          echo "STATUS_CODE=$STATUS_CODE"
+          if [ "200" != "$STATUS_CODE" ]; then
+            echo "Status is not 200"
+            curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$AI_TRANSLATE_BODY" "$JF_URL/xray/api/v2/ci/build"
+            exit 1
+          fi
+
       - name: Create an application version
         id: create_app_ver
         run: |
