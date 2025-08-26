@@ -138,4 +138,10 @@ echo "🧹 Cleaning up..."
 kill $MOCK_PID 2>/dev/null || true
 rm -f mock-server.js cypress.config.mock.js
 
+# Keep the results file for inspection
+if [ -f "cypress-results.json" ]; then
+    echo "📄 Cypress results file preserved for inspection"
+    echo "📊 Results file location: $(pwd)/cypress-results.json"
+fi
+
 echo "✅ Mock service test completed!"
