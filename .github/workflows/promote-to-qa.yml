@@ -191,6 +191,10 @@ jobs:
 
     - name: Create evidence from the e2e test results
       run: |
+        # Debug: Check what files exist in e2e-tests directory
+        echo "🔍 Checking e2e-tests directory contents:"
+        ls -la e2e-tests/
+        
         # Check if results file exists and validate JSON
         if [ -f "e2e-tests/cypress-results.json" ]; then
           echo "✅ Cypress results file found"
@@ -201,10 +205,14 @@ jobs:
             cp e2e-tests/cypress-results.json cypress-results.json
           else
             echo "❌ Invalid JSON in results file"
+            echo "📋 File contents:"
+            cat e2e-tests/cypress-results.json
             exit 1
           fi
         else
           echo "❌ Cypress results file not found"
+          echo "🔍 Checking for any result files:"
+          find e2e-tests/ -name "*results*" -type f 2>/dev/null || echo "No result files found"
           exit 1
         fi
         
