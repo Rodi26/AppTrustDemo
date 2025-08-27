@@ -29,7 +29,7 @@
         <!-- Override vulnerable dependencies with secure versions -->
         <logback.version>1.5.13</logback.version>
         <tomcat.version>10.1.44</tomcat.version>
-        <xmlunit.version>2.9.2</xmlunit.version>
+        <xmlunit.version>2.10.3</xmlunit.version>
     </properties>
 
     <dependencies>
