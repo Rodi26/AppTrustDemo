@@ -4,12 +4,7 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (only build-essential, no curl needed)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean \
-    && apt-get autoremove -y
+# No system dependencies needed - all Python packages have pre-compiled wheels
 
 # Copy requirements first for better caching
 COPY requirements-optimized.txt requirements.txt
