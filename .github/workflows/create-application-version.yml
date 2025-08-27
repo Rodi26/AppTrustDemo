@@ -60,8 +60,8 @@ jobs:
           echo "NEXT_VER=$NEXT_VER"
   
           REQUEST_BODY="{\"version\": \"$NEXT_VER\", \"sources\": {\"builds\": [\
-          {\"name\":\"quoteofday\", \"number\":\"$QUOTEOFDAY_BUILD_NUMBER\", \"include_dependencies\":true},\
-          {\"name\":\"ai-translate\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"include_dependencies\":true}\
+          {\"name\":\"quoteofday\", \"number\":\"$QUOTEOFDAY_BUILD_NUMBER\", \"include_dependencies\":false},\
+          {\"name\":\"ai-translate\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"include_dependencies\":false}\
           ]}}"
           echo "REQUEST_BODY=$REQUEST_BODY"
 
