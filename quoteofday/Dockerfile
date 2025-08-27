@@ -1,8 +1,6 @@
 # Simple runtime image for Java application
 FROM eclipse-temurin:21-jre AS runtime
 
-# No need to install curl - we'll use built-in alternatives for health checks
-
 # Single layer for all setup operations
 RUN groupadd -g 1001 spring && \
     useradd -u 1001 -g spring -m spring && \
@@ -14,15 +12,7 @@ WORKDIR /app
 # Copy the pre-built JAR file
 COPY --chown=spring:spring target/quote-of-day-service-*.jar app.jar
 
-# Copy health check script
-COPY --chown=spring:spring health-check.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/health-check.sh
-
 USER spring
 EXPOSE 8080
-
-# Health check using custom script (most secure and flexible)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD /usr/local/bin/health-check.sh
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
