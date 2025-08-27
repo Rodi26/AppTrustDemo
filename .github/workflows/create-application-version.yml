@@ -48,39 +48,6 @@ jobs:
           echo "latest_ai_translate_build_number=$LATEST_AI_TRANSLATE_BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "Found latest ai-translate build number: $LATEST_AI_TRANSLATE_BUILD_NUMBER"
 
-      - name: Start Xray scan on builds
-        run: |
-          set +e
-          QUOTEOFDAY_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_quoteofday_build_number }}"
-          AI_TRANSLATE_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_ai_translate_build_number }}"
-          
-          QUOTEOFDAY_BODY="{\"build_name\":\"quoteofday\", \"build_number\":\"$QUOTEOFDAY_BUILD_NUMBER\"}"
-          AI_TRANSLATE_BODY="{\"build_name\":\"ai-translate\", \"build_number\":\"$AI_TRANSLATE_BUILD_NUMBER\"}"
-
-          echo "Starting Xray scan $QUOTEOFDAY_BODY" 
-          STATUS_CODE=$(curl -o response.json -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$QUOTEOFDAY_BODY" "$JF_URL/xray/api/v2/ci/build")
-          echo "STATUS_CODE=$STATUS_CODE"
-          if [ "200" != "$STATUS_CODE" ]; then
-            echo "Status is not 200"
-            curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$QUOTEOFDAY_BODY" "$JF_URL/xray/api/v2/ci/build"
-            exit 1
-          fi
-          echo "Response:"
-          cat response.json
-          echo
-
-          echo "Starting Xray scan $AI_TRANSLATE_BODY" 
-          STATUS_CODE=$(curl -o response.json -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$AI_TRANSLATE_BODY" "$JF_URL/xray/api/v2/ci/build")
-          echo "STATUS_CODE=$STATUS_CODE"
-          if [ "200" != "$STATUS_CODE" ]; then
-            echo "Status is not 200"
-            curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$AI_TRANSLATE_BODY" "$JF_URL/xray/api/v2/ci/build"
-            exit 1
-          fi
-          echo "Response:"
-          cat response.json
-          echo
-
       - name: Create an application version
         id: create_app_ver
         run: |
@@ -108,68 +75,6 @@ jobs:
               exit 1
           fi
           echo "app_ver=$NEXT_VER" >> $GITHUB_OUTPUT
-
-      - name: Wait for Xray scans to complete
-        run: |
-          set +e
-
-          TIME_TO_WAIT_MINUTES=3
-          ((TIME_TO_WAIT_SECONDS = TIME_TO_WAIT_MINUTES * 60))
-          WAIT_SECONDS=5
-                    
-          QUOTEOFDAY_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_quoteofday_build_number }}"
-          AI_TRANSLATE_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_ai_translate_build_number }}"
-                                                                                
-          QUOTEOFDAY_BODY="{\"name\":\"quoteofday\", \"number\":\"$QUOTEOFDAY_BUILD_NUMBER\"}"
-          AI_TRANSLATE_BODY="{\"name\":\"ai-translate\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\"}"
-
-          function wait_for_scan() {
-              local BODY="$1"
-              local OUTPUT_FILE_NAME="$2"
-
-              START_TIME=$(date +%s)
-              ((END_TIME = START_TIME + TIME_TO_WAIT_SECONDS))
-
-              echo "Polling Xray scan status for $TIME_TO_WAIT_MINUTES minutes ($TIME_TO_WAIT_SECONDS seconds): $BODY"
-              while true; do
-                  CUR_TIME=$(date +%s)
-                  if [ "$CUR_TIME" -ge "$END_TIME" ]; then
-                    echo "Scan did not finished within $TIME_TO_WAIT_MINUTES minutes."
-                    exit 1
-                  fi
-
-                  STATUS_CODE=$(curl -o response.json -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$BODY" "$JF_URL/xray/api/v1/build/status")
-                  echo "STATUS_CODE=$STATUS_CODE"                                       
-                  if [ "200" != "$STATUS_CODE" ]; then                                  
-                    echo "Status is not 200"
-                    cat response.json
-                    exit 1                                                              
-                  fi                                                                    
-                  #echo "Response:"                                                      
-                  #cat response.json                                                     
-                  #echo
-                  SCAN_STATUS=$(cat response.json | jq '.overall.status'| tr -d \")
-                  echo "SCAN_STATUS=$SCAN_STATUS"
-                  [ "PENDING" == "$SCAN_STATUS" -o "SCANNING" == "$SCAN_STATUS" ] && echo "Scan in progress. Waiting $WAIT_SECONDS seconds..." && sleep "$WAIT_SECONDS" && continue
-                  [ "DONE" == "$SCAN_STATUS" ] && echo "Scan done." && mv response.json "$OUTPUT_FILE_NAME" && echo "Created output file $OUTPUT_FILE_NAME" && break
-                  echo "Scan was not successful."
-                  exit 1
-              done
-          }
-
-          wait_for_scan "$QUOTEOFDAY_BODY" quoteofday.xray.result.json
-          wait_for_scan "$AI_TRANSLATE_BODY" ai-translate.xray.result.json
-
-      - name: Creating evidence for Xray scans
-        run: |
-          set +e
-          APP_VER=${{ steps.create_app_ver.outputs.app_ver }}
-          [ -f quoteofday.xray.result.json ] || echo "Missing quote of the day Xray scan evidence."
-          [ -f quoteofday.xray.result.json ] && jf evd create --project swampup --release-bundle "$APP_ID" --release-bundle-version "$APP_VER" \
-            --predicate quoteofday.xray.result.json --predicate-type xray --provider-id jfrog
-          [ -f ai-translate.xray.result.json ] || echo "Missing AI translate Xray scan evidence."
-          [ -f ai-translate.xray.result.json ] && jf evd create --project swampup --release-bundle "$APP_ID" --release-bundle-version "$APP_VER" \
-            --predicate ai-translate.xray.result.json --predicate-type xray --provider-id jfrog
 
       - name: Promote application to DEV
         run: |
