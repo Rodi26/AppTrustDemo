@@ -1,0 +1,79 @@
+name: "Create Jira evidence"
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_name:
+        description: "Build name for the evidence"
+        required: true
+      build_number:
+        description: "Build number for the evidence"
+        required: true
+      fetch_depth:
+        description: "Number of previous commits to fetch (default is 10)"
+        required: false
+        default: "10"
+
+jobs:
+  create-jira-evidence:
+    runs-on: ubuntu-latest
+    env:
+      JIRA_ID_REGEX: '[A-Z]+-[0-9]+'
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      JIRA_URL: ${{ vars.JIRA_URL }}
+      JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+    steps:
+      - name: Setup jfrog cli
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ vars.ARTIFACTORY_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event.inputs.fetch_depth }}
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Build JIRA helper binary
+        run: |
+          cd jira/helper
+          chmod +x build.sh
+          ./build.sh
+          cd -
+      - name: Fetch build info and extract VCS revision
+        id: build_info
+        run: |
+          echo "Fetching build info for ${{ github.event.inputs.build_name }} ${{ github.event.inputs.build_number }}..."
+          
+          # Fetch build info using JFrog CLI
+          VCS_REVISION=$(jf rt curl -X GET "/api/build/${{ github.event.inputs.build_name }}/${{ github.event.inputs.build_number }}" -s | jq -r '.buildInfo.vcs[0].revision // empty')
+          
+          if [ -z "$VCS_REVISION" ]; then
+            echo "Error: Could not extract VCS revision from build info"
+            echo "Attempting to fetch full build info for debugging..."
+            jf rt curl -X GET "/api/build/${{ github.event.inputs.build_name }}/${{ github.event.inputs.build_number }}" -s | jq '.'
+            exit 1
+          fi
+          
+          echo "Found VCS revision: $VCS_REVISION"
+          echo "vcs_revision=$VCS_REVISION" >> $GITHUB_OUTPUT
+      - name: Fetch details from jira
+        run: | 
+          cd jira/helper
+          echo "Processing JIRA details for commit: ${{ steps.build_info.outputs.vcs_revision }}"
+          ./main "${{ steps.build_info.outputs.vcs_revision }}"
+          cd -
+
+
+      - name: Create JIRA evidence
+        run: |
+          jf evd create \
+            --build-name ${{ github.event.inputs.build_name }} \
+            --build-number ${{ github.event.inputs.build_number }} \
+            --key "${{ secrets.PRIVATE_KEY }}" \
+            --key-alias "${{ vars.EVIDENCE_KEY_ALIAS }}" \
+            --predicate ./jira/helper/transformed_jira_data.json \
+            --predicate-type http://atlassian.com/jira/issues/v1
+
