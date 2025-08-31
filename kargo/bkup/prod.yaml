@@ -79,6 +79,9 @@ spec:
             author:
               name: kargo
               email: kargo@jfrog.com
+        - uses: git-push
+          config:
+            path: .
   requestedFreight:
     - origin:
         kind: Warehouse
