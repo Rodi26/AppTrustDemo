@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quoteofday
+  labels:
+    app: quoteofday
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quoteofday
+  template:
+    metadata:
+      labels:
+        app: quoteofday
+    spec:
+      containers:
+      - name: quoteofday-container
+        image: evidencetrial.jfrog.io/commons-dev-docker-local/quoteofday:70 
+        ports:
+        - containerPort: 8080
