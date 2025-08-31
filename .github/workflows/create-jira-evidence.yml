@@ -21,7 +21,7 @@ jobs:
       JIRA_ID_REGEX: '[A-Z]+-[0-9]+'
       JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       JIRA_URL: ${{ vars.JIRA_URL }}
-      JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+      JIRA_USERNAME: ${{ vars.JIRA_USERNAME }}
     steps:
       - name: Setup jfrog cli
         uses: jfrog/setup-jfrog-cli@v4
@@ -72,7 +72,7 @@ jobs:
           jf evd create \
             --build-name ${{ github.event.inputs.build_name }} \
             --build-number ${{ github.event.inputs.build_number }} \
-            --key "${{ secrets.PRIVATE_KEY }}" \
+            --key "${{ secrets.EVIDENCE_PRIVATE_KEY }}" \
             --key-alias "${{ vars.EVIDENCE_KEY_ALIAS }}" \
             --predicate ./jira/helper/transformed_jira_data.json \
             --predicate-type http://atlassian.com/jira/issues/v1
