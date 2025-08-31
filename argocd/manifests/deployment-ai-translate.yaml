@@ -19,3 +19,5 @@ spec:
         image: evidencetrial.jfrog.io/commons-dev-docker-local/ai-translate:23 
         ports:
         - containerPort: 8080
+      imagePullSecrets:
+        - name: evidencetrial
