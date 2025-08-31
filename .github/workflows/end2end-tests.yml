@@ -1,16 +1,16 @@
-name: Promote to QA
+name: End 2 End Tests
 
 on:
   workflow_dispatch:
-    inputs:
-      promote_to_qa:
-        description: 'Promote to QA environment'
-        required: false
-        default: true
-        type: boolean
+    # inputs:
+    #   promote_to_qa:
+    #     description: 'Promote to QA environment'
+    #     required: false
+    #     default: true
+    #     type: boolean
 
 jobs:
-  promote-to-qa:
+  end2end-tests:
     name: Promote to QA and run E2E tests
     runs-on: ubuntu-latest
     env:
@@ -45,30 +45,6 @@ jobs:
         echo "latest_dev_version=$LATEST_DEV_VERSION" >> $GITHUB_OUTPUT
         echo "Found latest DEV release bundle version: $LATEST_DEV_VERSION"
     
-    - name: Promote to QA
-      if: ${{ inputs.promote_to_qa == 'true' }}
-      run: |
-        LATEST_DEV_VERSION="${{ steps.get-latest-dev-version.outputs.latest_dev_version }}"
-        
-        echo "🚀 Promoting release bundle quotopia version $LATEST_DEV_VERSION from DEV to QA..."
-        
-        # Promote the release bundle from DEV to QA
-        jf release-bundle-promote quotopia $LATEST_DEV_VERSION QA
-        
-        if [ $? -eq 0 ]; then
-          echo "✅ Successfully promoted quotopia version $LATEST_DEV_VERSION to QA"
-          
-          # Create a link to the QA release bundle
-          QA_LINK="${{ vars.JF_URL }}/ui/artifactory/lifecycle?bundleName=quotopia&releaseBundleVersion=$LATEST_DEV_VERSION&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
-          echo "🥡 QA Release Bundle: [quotopia:$LATEST_DEV_VERSION]($QA_LINK)" >> $GITHUB_STEP_SUMMARY
-          
-          # Store the version for the E2E test job
-          echo "LATEST_QA_VERSION=$LATEST_DEV_VERSION" >> $GITHUB_ENV
-        else
-          echo "❌ Failed to promote quotopia version $LATEST_DEV_VERSION to QA"
-          exit 1
-        fi
-
     - name: Set QA version (when promotion is skipped)
       if: ${{ inputs.promote_to_qa != 'true' }}
       run: |
