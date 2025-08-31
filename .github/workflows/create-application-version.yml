@@ -42,11 +42,11 @@ jobs:
           BUILD_RESPONSE=$(curl -s -X GET \
             -H "Authorization: Bearer ${{ secrets.JF_ACCESS_TOKEN }}" \
             "${{ vars.JF_URL }}/artifactory/api/build/quotopia-ui")
-          LATEST_QUOTOPIA-UI_BUILD_NUMBER=$(echo "$BUILD_RESPONSE" | \
+          LATEST_QUOTOPIA_UI_BUILD_NUMBER=$(echo "$BUILD_RESPONSE" | \
             jq -r '.buildsNumbers | sort_by(.started) | reverse | .[0].uri | ltrimstr("/")')
           
-          echo "latest_quotopia-ui_build_number=$LATEST_QUOTOPIA-UI_BUILD_NUMBER" >> $GITHUB_OUTPUT
-          echo "Found latest quotopia-ui build number: $LATEST_QUOTOPIA-UI_BUILD_NUMBER"  
+          echo "latest_quotopia_ui_build_number=$LATEST_QUOTOPIA_UI_BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "Found latest quotopia-ui build number: $LATEST_QUOTOPIA_UI_BUILD_NUMBER"  
           BUILD_RESPONSE=$(curl -s -X GET \
             -H "Authorization: Bearer ${{ secrets.JF_ACCESS_TOKEN }}" \
             "${{ vars.JF_URL }}/artifactory/api/build/ai-translate")
@@ -61,7 +61,7 @@ jobs:
         run: |
           set +e
           QUOTEOFDAY_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_quoteofday_build_number }}"
-          QUOTOPIA-UI_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_quotopia-ui_build_number }}"
+          QUOTOPIA_UI_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_quotopia_ui_build_number }}"
           AI_TRANSLATE_BUILD_NUMBER="${{ steps.get-latest-builds.outputs.latest_ai_translate_build_number }}"
   
           echo "APP_ID=$APP_ID"
@@ -70,7 +70,7 @@ jobs:
   
           REQUEST_BODY="{\"version\": \"$NEXT_VER\", \"sources\": {\"builds\": [\
           {\"name\":\"quoteofday\", \"number\":\"$QUOTEOFDAY_BUILD_NUMBER\", \"include_dependencies\":false},\
-          {\"name\":\"quotopia-ui\", \"number\":\"$QUOTOPIA-UI_BUILD_NUMBER\", \"include_dependencies\":false},\
+          {\"name\":\"quotopia-ui\", \"number\":\"$QUOTOPIA_UI_BUILD_NUMBER\", \"include_dependencies\":false},\
           {\"name\":\"ai-translate\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"include_dependencies\":false}\
           ]}}"
           echo "REQUEST_BODY=$REQUEST_BODY"
