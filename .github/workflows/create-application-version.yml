@@ -44,6 +44,7 @@ jobs:
 
           # Fetch build information from Artifactory API
           LATEST_QUOTEOFDAY_BUILD_NUMBER=$(getBuildNumber quoteofday)
+          [ $? -ne 0 ] && exit 1
           
           echo "latest_quoteofday_build_number=$LATEST_QUOTEOFDAY_BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "Found latest quoteofday build number: $LATEST_QUOTEOFDAY_BUILD_NUMBER"
