@@ -71,8 +71,12 @@ jobs:
           # Use jq to parse the JSON and extract the version.
           # The API returns an array 'versions', so we get the first element.
           LATEST_VER=$(echo "$RESPONSE" | jq -r '.versions[0].version')
+
+          if [ "$LATEST_VER" == "null" ]; then
+            LATEST_VER = 0
+          fi
           
-          if [ "$LATEST_VER" == "null" ] || [ -z "$LATEST_VER" ]; then
+          if [ -z "$LATEST_VER" ]; then
             echo "Error: Could not retrieve a valid application version."
             exit 1
           fi
