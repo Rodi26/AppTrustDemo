@@ -37,7 +37,7 @@ jobs:
             local LATEST_BUILD_NUMBER=$(echo "$RESPONSE" | \
                                 jq -r '.buildsNumbers | sort_by(.started) | reverse | .[0].uri | ltrimstr("/")')
             if [ "" == "$LATEST_BUILD_NUMBER" ]; then 
-                echo "Failed to parse latest build number for build '$1' from response: $RESPONSE" > &2
+                echo "Failed to parse latest build number for build '$1' from response: $RESPONSE" >&2
                 exit 1
             fi
             echo "$LATEST_BUILD_NUMBER"
