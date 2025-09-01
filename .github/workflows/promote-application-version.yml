@@ -80,7 +80,7 @@ jobs:
           set +e
           if [ "${{ env.TARGET_STAGE }}" == "prod" -o "${{ env.TARGET_STAGE }}" == "PROD" ]; then
               echo "Env ${{ env.TARGET_STAGE }} is PRODD, notifying cargo."
-              RELEASED_VERSION="{ \"app_id\": \"${{ env.TARGET_STAGE }}\", \"app_ver\": \"\${{ steps.get_app_ver.outputs.app_ver }}"}"
+              RELEASED_VERSION="{ \"app_id\": \"${{ env.TARGET_STAGE }}\", \"app_ver\": \"${{ steps.get_app_ver.outputs.app_ver }}\"}"
               mkdir -p kargo
               echo "$RELEASED_VERSION" > kargo/release_version
               echo "Created release version file:"
