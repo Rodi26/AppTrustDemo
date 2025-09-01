@@ -1,13 +1,15 @@
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
+  annotations:
+    kargo.akuity.io/refresh: 2025-08-31T14:03:58Z
   creationTimestamp: 2025-08-31T07:28:49Z
   finalizers:
     - kargo.akuity.io/finalizer
-  generation: 2
+  generation: 4
   name: prod
   namespace: swampup-2025-evidence-demo
-  resourceVersion: "210010"
+  resourceVersion: "221286"
   uid: 1330470d-11b4-4eca-8059-6b4b2b322318
 spec:
   promotionTemplate:
@@ -17,7 +19,7 @@ spec:
           config:
             checkout:
               - branch: feature/RTDEV-62079-kargo
-                path: .
+                path: ./src
             repoURL: https://github.com/jfrog/evidence-integration
           continueOnError: false
           if: ""
@@ -29,7 +31,7 @@ spec:
                 name: app_id
               - fromExpression: .app_ver
                 name: app_ver
-            path: ./kargo/release_version
+            path: ./src/kargo/release_version
           continueOnError: false
           if: ""
           uses: json-parse
@@ -55,7 +57,7 @@ spec:
           if: ""
           uses: http
         - config:
-            path: ./argocd/manifests/deployment-${{ outputs.build_details.build1_name
+            path: ./src/argocd/manifests/deployment-${{ outputs.build_details.build1_name
               }}.yaml
             updates:
               key: spec.template.spec.containers.image
@@ -64,7 +66,7 @@ spec:
                 outputs.build_details.build1_number }}
           uses: yaml-update
         - config:
-            path: ./argocd/manifests/deployment-${{ outputs.build_details.build2_name
+            path: ./src/argocd/manifests/deployment-${{ outputs.build_details.build2_name
               }}.yaml
             updates:
               key: spec.template.spec.containers.image
@@ -72,16 +74,19 @@ spec:
                 outputs.build_details.build2_name }}:${{
                 outputs.build_details.build2_number }}
           uses: yaml-update
-        - uses: git-commit
-          config:
-            path: .
-            message: Updated ArgoCD to ${{ outputs.build_details.build1_name }}:${{ outputs.build_details.build1_number }} and ${{ outputs.build_details.build2_name }}:${{ outputs.build_details.build2_number }}
+        - config:
             author:
-              name: kargo
               email: kargo@jfrog.com
-        - uses: git-push
-          config:
-            path: .
+              name: kargo
+            message: Updated ArgoCD to ${{ outputs.build_details.build1_name }}:${{
+              outputs.build_details.build1_number }} and ${{
+              outputs.build_details.build2_name }}:${{
+              outputs.build_details.build2_number }}
+            path: ./src
+          uses: git-commit
+        - config:
+            path: ./src
+          uses: git-push
   requestedFreight:
     - origin:
         kind: Warehouse
@@ -89,4 +94,3 @@ spec:
       sources:
         direct: true
         stages: []
-
