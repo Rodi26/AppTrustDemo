@@ -60,6 +60,7 @@ jobs:
     
     - name: Notify Kargo to Deploy
       run: |
+        set +e
         RELEASED_VERSION="{ \"app_id\": \"quotopia\", \"app_ver\": \"${{ steps.get-latest-qa-version.outputs.latest_qa_version }}\"}"
         mkdir -p kargo
         echo "$RELEASED_VERSION" > kargo/release_version
@@ -68,9 +69,9 @@ jobs:
         echo
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        echo "Git add kargo/release_version"
-        git add kargo/release_version
-        git status
-        echo "Git commit"
-        git commit -m "Update kargo/release_version to $RELEASED_VERSION"
-        git push
+        if [ "" != "$(git diff) ]; then
+            echo "Release version changed, pushing..."
+            git add kargo/release_version && git commit -m "Update kargo/release_version to $RELEASED_VERSION" && git push
+        else
+            echo "Release version wasn't changed."
+        fi
