@@ -44,17 +44,19 @@ jobs:
 
           # Fetch build information from Artifactory API
           LATEST_QUOTEOFDAY_BUILD_NUMBER=$(getBuildNumber quoteofday)
-          [ $? -ne 0 ] && exit 1
+          [ $? -ne 0 ] && echo "$LATEST_QUOTEOFDAY_BUILD_NUMBER" && exit 1
           
           echo "latest_quoteofday_build_number=$LATEST_QUOTEOFDAY_BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "Found latest quoteofday build number: $LATEST_QUOTEOFDAY_BUILD_NUMBER"
 
           LATEST_QUOTOPIA_UI_BUILD_NUMBER=$(getBuildNumber quotopia-ui)
+          [ $? -ne 0 ] && echo "$LATEST_QUOTOPIA_UI_BUILD_NUMBER" && exit 1
           
           echo "latest_quotopia_ui_build_number=$LATEST_QUOTOPIA_UI_BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "Found latest quotopia-ui build number: $LATEST_QUOTOPIA_UI_BUILD_NUMBER"  
           
           LATEST_AI_TRANSLATE_BUILD_NUMBER=$(getBuildNumber ai-translate)
+          [ $? -ne 0 ] && echo "$LATEST_AI_TRANSLATE_BUILD_NUMBER" && exit 1
           
           echo "latest_ai_translate_build_number=$LATEST_AI_TRANSLATE_BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "Found latest ai-translate build number: $LATEST_AI_TRANSLATE_BUILD_NUMBER"
