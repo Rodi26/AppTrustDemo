@@ -6,10 +6,10 @@ metadata:
   creationTimestamp: 2025-08-31T07:28:49Z
   finalizers:
     - kargo.akuity.io/finalizer
-  generation: 7
+  generation: 8
   name: prod
   namespace: swampup-2025-evidence-demo
-  resourceVersion: "227167"
+  resourceVersion: "229472"
   uid: 1330470d-11b4-4eca-8059-6b4b2b322318
 spec:
   promotionTemplate:
@@ -39,7 +39,7 @@ spec:
           config:
             headers:
               - name: Authorization
-                value: Bearer ${{ secret('evidence-trial-jpd-token').JF_TOKEN }}
+                value: Bearer ${{ secret('apptrustswampup').JF_TOKEN }}
             method: GET
             outputs:
               - fromExpression: sources[0].build.name
