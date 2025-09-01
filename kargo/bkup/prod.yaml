@@ -9,7 +9,7 @@ metadata:
   generation: 7
   name: prod
   namespace: swampup-2025-evidence-demo
-  resourceVersion: "222004"
+  resourceVersion: "227167"
   uid: 1330470d-11b4-4eca-8059-6b4b2b322318
 spec:
   promotionTemplate:
@@ -50,7 +50,7 @@ spec:
                 name: build2_name
               - fromExpression: sources[1].build.number
                 name: build2_number
-            url: https://evidencetrial.jfrog.io/apptrust/api/v1/applications/${{
+            url: https://apptrustswampup.jfrog.io/apptrust/api/v1/applications/${{
               outputs.app_details.app_id }}/versions/${{
               outputs.app_details.app_ver }}/content?include=sources
           continueOnError: false
