@@ -6,7 +6,7 @@ on:
       target_stage:
         description: 'Target promotion stage (e.g., DEV, QA, Staging, PROD)'
         required: true
-        default: 'DEV'
+        default: 'QA'
 
 jobs:
   promote-application:

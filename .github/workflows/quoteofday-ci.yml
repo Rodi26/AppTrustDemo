@@ -155,9 +155,12 @@ jobs:
       run: |
         echo "🔍 Creating evidence on docker image..."
         cd quoteofday
-        jf evd create --package-name quoteofday --package-version ${{ github.run_number }} --package-repo-name commons-dev-docker-local \
+        jf evd create --subject-repo-path quotopia-dev-docker/quoteofday/${{ github.run_number }}/list.manifest.json  \
           --predicate ./test-evidence.json --predicate-type https://jfrog.com/evidence/test-results/v1 \
           --markdown ./test-evidence.md --provider-id junit
+
+#        jf evd create --package-name quoteofday --package-version ${{ github.run_number }} --package-repo-name commons-dev-docker-local \
+
 
     - name: Attach Sonar result as evidence to the docker image
       run: |
