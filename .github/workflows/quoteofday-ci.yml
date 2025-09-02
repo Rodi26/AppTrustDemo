@@ -9,6 +9,10 @@ on:
       - '.github/workflows/quoteofday-ci.yml'
   workflow_dispatch:
 
+permissions:
+  id-token: write 
+  contents: read
+
 env:
   DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
 
