@@ -83,7 +83,7 @@ jobs:
       run: |
         jf rt build-add-git quotopia-ui ${{ github.run_number }}
         jf rt build-publish quotopia-ui ${{ github.run_number }}
-        echo "build_name="quotopia-ui" >> $GITHUB_OUTPUT
+        echo "build_name=quotopia-ui" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
     - name: Add signature Evidence
