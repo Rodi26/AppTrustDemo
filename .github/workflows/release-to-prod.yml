@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
     - name: Setup JFrog CLI
       uses: jfrog/setup-jfrog-cli@v4
       with:
