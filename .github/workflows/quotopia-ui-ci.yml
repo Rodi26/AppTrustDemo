@@ -97,5 +97,5 @@ jobs:
     uses: ./.github/workflows/create-jira-evidence.yml
     secrets: inherit
     with: 
-      build_name: ${{ needs.build-and-test.outputs.build_name }}
-      build_number: ${{ needs.build-and-test.outputs.build_number }}
+      build_name: ${{ needs.build-and-deploy.outputs.build_name }}
+      build_number: ${{ needs.build-and-deploy.outputs.build_number }}
