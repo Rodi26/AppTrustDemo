@@ -79,7 +79,8 @@ jobs:
 
           if [ "$STATUS_CODE" != "200" ]; then
             echo "Reuquest failed with code $STATUS_CODE"
-            cat result.json
+            # Running again without silent to see errors
+            curl -X GET -H "Authorization: Bearer $JF_ACCESS_TOKEN" "URL"
             exit 1
           fi
 
