@@ -43,8 +43,8 @@ spec:
         args:
           - |
             # These 2 below will be automatically replaced by the release-application-version.yml GitHub workflow
-            EVD_DEMO_APP_NAME=quotopia-app
-            EVD_DEMO_APP_VER=30
+            quotopia-app=quotopia-app
+            34=30
 
             echo "JF secrets:"
             ls -l /etc/jfsecrets
@@ -146,7 +146,7 @@ spec:
 
             echo "RUNNING_PODS=$RUNNING_PODS"
 
-            echo "EVD_DEMO_APP_NAME=$EVD_DEMO_APP_NAME, EVD_DEMO_APP_VER=$EVD_DEMO_APP_VER, CLUSTER_ID=$CLUSTER_ID"
+            echo "quotopia-app=$EVD_DEMO_APP_NAME, 34=$EVD_DEMO_APP_VER, CLUSTER_ID=$CLUSTER_ID"
 
             EVIDENCE="{\"deploymentState\":\"DEPLOYED\", \"time\":\"$(date)\", \"k8sClusterId\":\"$CLUSTER_ID\", \"runningPods\":$RUNNING_PODS}"
             echo "$EVIDENCE" > predicate.json
