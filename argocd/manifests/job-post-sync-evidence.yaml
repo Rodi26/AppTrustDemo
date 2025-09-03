@@ -7,14 +7,14 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   template:
-    volumes:
-    - name: jf-secrets-volume
-      secret:
-        secretName: apptrustswampup-jf-cli
-    - name: signing-key
-      secret:
-        secretName: evd-signing-key
     spec:
+      volumes:
+      - name: jf-secrets-volume
+        secret:
+          secretName: apptrustswampup-jf-cli
+      - name: signing-key
+        secret:
+          secretName: evd-signing-key
       volumeMounts:
       - name: jf-secrets-volume
         mountPath: /etc/jfsecrets
