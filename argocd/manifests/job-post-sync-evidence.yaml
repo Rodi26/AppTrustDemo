@@ -127,19 +127,10 @@ spec:
                 exit 1
             fi
 
-            is_valid_json_array() {
-                echo "$1" | jq -e 'if type == "array" then empty else error("not an array") end' > /dev/null 2>&1
-                return $?
-            }
-
             CLUSTER_ID=$(kubectl get namespace kube-system -o=jsonpath='{.metadata.uid}')
             RUNNING_PODS=$(kubectl -n quotopia get pods -o json |  jq '[.items[].metadata.name]')
 
             echo "RUNNING_PODS=$RUNNING_PODS"
-
-            if ! is_valid_json_array "$RUNNING_PODS"; then
-                RUNNING_PODS='[]'
-            fi
 
             echo "EVD_DEMO_APP_NAME=$EVD_DEMO_APP_NAME, EVD_DEMO_APP_VER=$EVD_DEMO_APP_VER, CLUSTER_ID=$CLUSTER_ID"
 
