@@ -88,12 +88,6 @@ jobs:
         echo "build_name=quotopia-ui" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
-    - name: Add signature Evidence
-      run: |
-        echo '{"user":"${{ github.actor }}", "date":"'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' > sign.json
-        jf evd create --build-name quotopia-ui --build-number ${{ github.run_number }} \
-          --predicate sign.json --predicate-type https://jfrog.com/evidence/signature/v1
-
   create_jira_evidence:
     needs: build-and-deploy
     uses: ./.github/workflows/create-jira-evidence.yml
