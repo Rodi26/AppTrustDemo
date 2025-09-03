@@ -37,8 +37,7 @@ spec:
 
               ### Running Pods
               The following pods were found running at the time of evaluation:
-              {{ range .runningPods }}
-              - `{{ . }}`{{ end }}
+              {{ runningPods }}
         command: ["/bin/bash", "-c"]
         args:
           - |
@@ -170,7 +169,7 @@ spec:
             done
 
             echo "Markdown file after:"
-            car markdown.md
+            cat markdown.md
             echo
 
             echo "Running jf evd create"
