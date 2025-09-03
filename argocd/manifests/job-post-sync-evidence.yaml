@@ -43,7 +43,7 @@ spec:
 
             # Install curl
             echo "Installing curl"
-            apt-get install curl
+            apt-get install -y curl
             if [ $? -ne 0 ]; then
                 echo "Failed to instll curl"
                 exit 1
