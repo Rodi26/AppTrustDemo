@@ -48,6 +48,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
+          cache: false
       - name: Build JIRA helper binary
         run: |
           cd jira/helper
@@ -103,6 +104,8 @@ jobs:
           if [ -f ./jira/helper/transformed_jira_data.json ]; then
             jf evd create \
               --subject-repo-path="$SUBJECT_PATH" \
+              --key "${{ secrets.EVIDENCE_PRIVATE_KEY }}" \
+              --key-alias "${{ vars.EVIDENCE_KEY_ALIAS }}" \
               --predicate ./jira/helper/transformed_jira_data.json \
               --predicate-type http://atlassian.com/jira/issues/v1 \
               --provider-id jira
