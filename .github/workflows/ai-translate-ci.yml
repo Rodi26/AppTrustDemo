@@ -12,7 +12,6 @@ on:
 env:
   DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
 
-
 jobs:
   test:
     name: Test Python Service

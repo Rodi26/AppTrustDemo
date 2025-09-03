@@ -200,7 +200,6 @@ jobs:
         echo "build_name=quoteofday" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
-
   create_jira_evidence:
     needs: build-and-test
     uses: ./.github/workflows/create-jira-evidence.yml

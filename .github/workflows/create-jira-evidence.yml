@@ -35,7 +35,9 @@ jobs:
       JIRA_USERNAME: ${{ vars.JIRA_USERNAME }}
       BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name }}
       BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number }}
+      JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
+
     steps:
       - name: Setup jfrog cli
         uses: jfrog/setup-jfrog-cli@v4
@@ -121,8 +123,6 @@ jobs:
           if [ -f ./jira/helper/transformed_jira_data.json ]; then
             jf evd create \
               --subject-repo-path="$SUBJECT_PATH" \
-              --key "${{ secrets.EVIDENCE_PRIVATE_KEY }}" \
-              --key-alias "${{ vars.EVIDENCE_KEY_ALIAS }}" \
               --predicate ./jira/helper/transformed_jira_data.json \
               --predicate-type http://atlassian.com/jira/issues/v1 \
               --markdown ./jira/helper/transformed_jira_data.md \
