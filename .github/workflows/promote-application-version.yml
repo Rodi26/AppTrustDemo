@@ -115,13 +115,13 @@ jobs:
           QUOTE_NUM=""
           UI_NUM=""
 
-          cat result.json | jq -c '.sources[] | {name: .build.name, number: .build.number}' | while read -r build_info; do
-            name=$(echo "$build_info" | jq -r '.name')                          
-            number=$(echo "$build_info" | jq -r '.number')                      
+          while read -r build_info; do
+            name=$(echo "$build_info" | jq -r '.name')
+            number=$(echo "$build_info" | jq -r '.number')
             echo "Found build with name: $name and number: $number"
-            [ "$name" == "quoteofday" ] && export QUOTE_NUM="$number"
-            [ "$name" == "quotopia-ui" ] && export UI_NUM="$number"
-          done              
+            [ "$name" == "quoteofday" ] && QUOTE_NUM="$number"
+            [ "$name" == "quotopia-ui" ] && UI_NUM="$number"
+          done < <(cat result.json | jq -c '.sources[] | {name: .build.name, number: .build.number}')
         
           if [ "" == "$QUOTE_NUM" -o "" == "$UI_NUM" ]; then
             echo "quoteofday or quotopoia-ui version (or both) could not be found."
