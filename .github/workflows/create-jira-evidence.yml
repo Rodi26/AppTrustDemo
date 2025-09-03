@@ -94,7 +94,24 @@ jobs:
             echo "No JIRA IDs to process"
           fi
           cd -
-
+      
+      - name: Generate markdown report
+        if: ${{ steps.build_info.outputs.jira_ids != '' }}
+        run: |
+          cd jira/helper
+          if [ -f transformed_jira_data.json ]; then
+            echo "Generating markdown report from JIRA data..."
+            ./main --markdown
+            if [ -f transformed_jira_data.md ]; then
+              echo "Markdown report generated successfully"
+              cat transformed_jira_data.md
+            else
+              echo "Error: Markdown file was not generated"
+            fi
+          else
+            echo "No JIRA data JSON file found, skipping markdown generation"
+          fi
+          cd -
 
       - name: Create JIRA evidence
         run: |
@@ -108,8 +125,8 @@ jobs:
               --key-alias "${{ vars.EVIDENCE_KEY_ALIAS }}" \
               --predicate ./jira/helper/transformed_jira_data.json \
               --predicate-type http://atlassian.com/jira/issues/v1 \
+              --markdown ./jira/helper/transformed_jira_data.md \
               --provider-id jira
           else 
             echo "Not creating a Jira evidence since no Jira IDs were found for this build."
           fi
-

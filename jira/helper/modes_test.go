@@ -734,3 +734,217 @@ func TestProcessDirectJiraIDs(t *testing.T) {
 		})
 	}
 }
+
+func TestRunMarkdownMode(t *testing.T) {
+	// Create temp directory for test files
+	tempDir, err := os.MkdirTemp("", "markdown-mode-test")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	tests := []struct {
+		name        string
+		flags       *FlagConfig
+		setupFiles  map[string]string
+		envVars     map[string]string
+		expectError bool
+		expectFiles []string
+	}{
+		{
+			name: "Generate markdown with default files",
+			flags: &FlagConfig{
+				GenerateMarkdown: true,
+			},
+			setupFiles: map[string]string{
+				"transformed_jira_data.json": `{"tasks": [{"key": "TEST-123", "status": "Done"}]}`,
+			},
+			envVars:     map[string]string{},
+			expectError: false,
+			expectFiles: []string{"transformed_jira_data.md"},
+		},
+		{
+			name: "Generate markdown with custom input and output",
+			flags: &FlagConfig{
+				GenerateMarkdown: true,
+				OutputFile:       "custom_input.json",
+				MarkdownOutput:   "custom_output.md",
+			},
+			setupFiles: map[string]string{
+				"custom_input.json": `{"tasks": [{"key": "CUSTOM-456", "status": "In Progress"}]}`,
+			},
+			envVars:     map[string]string{},
+			expectError: false,
+			expectFiles: []string{"custom_output.md"},
+		},
+		{
+			name: "Generate markdown with environment variable for input",
+			flags: &FlagConfig{
+				GenerateMarkdown: true,
+				MarkdownOutput:   "env_output.md",
+			},
+			setupFiles: map[string]string{
+				"env_data.json": `{"tasks": []}`,
+			},
+			envVars: map[string]string{
+				"OUTPUT_FILE": "env_data.json",
+			},
+			expectError: false,
+			expectFiles: []string{"env_output.md"},
+		},
+		{
+			name: "Error when input file doesn't exist",
+			flags: &FlagConfig{
+				GenerateMarkdown: true,
+				OutputFile:       "nonexistent.json",
+			},
+			setupFiles:  map[string]string{},
+			envVars:     map[string]string{},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Change to temp directory
+			oldDir, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldDir)
+
+			// Set up environment variables
+			for k, v := range tt.envVars {
+				os.Setenv(k, v)
+			}
+			defer func() {
+				for k := range tt.envVars {
+					os.Unsetenv(k)
+				}
+			}()
+
+			// Create test files
+			for filename, content := range tt.setupFiles {
+				err := os.WriteFile(filename, []byte(content), 0644)
+				assert.NoError(t, err)
+			}
+
+			// Capture stdout
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// Run the function
+			err := runMarkdownMode(tt.flags)
+
+			// Restore stdout
+			w.Close()
+			os.Stdout = oldStdout
+
+			// Read output
+			buf := make([]byte, 4096)
+			n, _ := r.Read(buf)
+			output := string(buf[:n])
+
+			// Check error
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Contains(t, output, "Markdown Generation Mode")
+				assert.Contains(t, output, "Markdown generation completed successfully")
+			}
+
+			// Check expected files
+			for _, file := range tt.expectFiles {
+				_, err := os.Stat(file)
+				assert.NoError(t, err, "Expected file %s to exist", file)
+			}
+
+			// Clean up files
+			files, _ := os.ReadDir(".")
+			for _, f := range files {
+				os.Remove(f.Name())
+			}
+		})
+	}
+}
+
+func TestDetermineExecutionModeWithMarkdown(t *testing.T) {
+	tests := []struct {
+		name        string
+		flags       *FlagConfig
+		args        []string
+		expectMode  string
+		expectError bool
+	}{
+		{
+			name: "Markdown mode takes precedence",
+			flags: &FlagConfig{
+				GenerateMarkdown: true,
+			},
+			args:        []string{},
+			expectMode:  "markdown",
+			expectError: false,
+		},
+		{
+			name: "Markdown mode with other flags",
+			flags: &FlagConfig{
+				GenerateMarkdown: true,
+				ExtractOnly:      true, // Should be ignored
+			},
+			args:        []string{"some-arg"},
+			expectMode:  "markdown",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp directory for markdown mode
+			tempDir, err := os.MkdirTemp("", "markdown-exec-test")
+			assert.NoError(t, err)
+			defer os.RemoveAll(tempDir)
+
+			// Change to temp directory
+			oldDir, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(oldDir)
+
+			// Create a minimal JSON file for markdown mode
+			if tt.flags.GenerateMarkdown {
+				err := os.WriteFile("transformed_jira_data.json", []byte(`{"tasks":[]}`), 0644)
+				assert.NoError(t, err)
+			}
+
+			// Mock config
+			config := &AppConfig{
+				JIRAIDRegex: DefaultJIRAIDRegex,
+				OutputFile:  DefaultOutputFile,
+			}
+
+			// Capture stdout
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// Run the function
+			err = determineExecutionMode(tt.flags, tt.args, config)
+
+			// Restore stdout
+			w.Close()
+			os.Stdout = oldStdout
+
+			// Read output
+			buf := make([]byte, 4096)
+			n, _ := r.Read(buf)
+			output := string(buf[:n])
+
+			// Check results
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				if tt.expectMode == "markdown" {
+					assert.Contains(t, output, "Markdown Generation Mode")
+				}
+			}
+		})
+	}
+}

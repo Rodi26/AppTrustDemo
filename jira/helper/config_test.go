@@ -57,6 +57,23 @@ func TestParseFlagsComplete(t *testing.T) {
 			expectedArgs: []string{"arg1", "arg2"},
 		},
 		{
+			name: "Parse markdown flag",
+			args: []string{"cmd", "--markdown"},
+			expectedFlags: &FlagConfig{
+				GenerateMarkdown: true,
+			},
+			expectedArgs: []string{},
+		},
+		{
+			name: "Parse markdown with output flag",
+			args: []string{"cmd", "--markdown", "--markdown-output", "report.md"},
+			expectedFlags: &FlagConfig{
+				GenerateMarkdown: true,
+				MarkdownOutput:   "report.md",
+			},
+			expectedArgs: []string{},
+		},
+		{
 			name:          "No flags, only arguments",
 			args:          []string{"cmd", "EV-123", "EV-456"},
 			expectedFlags: &FlagConfig{},
@@ -152,6 +169,21 @@ func TestLoadConfigComplete(t *testing.T) {
 				OutputFile:     DefaultOutputFile,
 				ExtractFromGit: true,
 				SingleCommit:   true,
+			},
+		},
+		{
+			name: "Markdown mode - no JIRA validation",
+			flags: &FlagConfig{
+				GenerateMarkdown: true,
+				MarkdownOutput:   "test-report.md",
+			},
+			args:        []string{},
+			envVars:     map[string]string{},
+			expectError: false,
+			expectedConfig: &AppConfig{
+				JIRAIDRegex:  DefaultJIRAIDRegex,
+				OutputFile:   DefaultOutputFile,
+				SingleCommit: true,
 			},
 		},
 		{

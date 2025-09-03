@@ -19,6 +19,9 @@ go build -o main .
 
 # Process commit range
 ./main --range <start_commit>
+
+# Generate markdown from JSON output
+./main --markdown
 ```
 
 ## Prerequisites
@@ -80,12 +83,28 @@ Extract JIRA IDs without fetching details (useful for debugging).
 ./main --extract-only abc123def456
 ```
 
+### 4. Markdown Generation Mode
+Generate a markdown report from the JSON output file.
+
+```bash
+# Generate markdown from default JSON file (transformed_jira_data.json)
+./main --markdown
+
+# Generate markdown with custom output file
+./main --markdown --markdown-output report.md
+
+# Use different input JSON file
+./main --markdown -o custom_data.json --markdown-output custom_report.md
+```
+
 ## Command Line Options
 
 - `-r, --regex PATTERN` - JIRA ID regex pattern
 - `-o, --output FILE` - Output file path
 - `--extract-only` - Only extract IDs, don't fetch from JIRA
 - `--range` - Process commit range instead of single commit
+- `--markdown` - Generate markdown from existing JSON file
+- `--markdown-output FILE` - Output file for markdown (default: transformed_jira_data.md)
 - `-h, --help` - Show help
 
 ## Output Format
@@ -131,6 +150,43 @@ When a JIRA ticket cannot be fetched:
   "description": "Error: Could not retrieve issue",
   "type": "Error"
 }
+```
+
+### Markdown Output Format
+
+The markdown generation feature creates a comprehensive report with:
+
+- **Summary Table** - Overview of all tasks with key information
+- **Task Details** - Complete information for each task including:
+  - Basic information (status, type, project, priority)
+  - People (assignee, reporter)
+  - Dates (created, updated)
+  - Description
+  - Transition history
+- **Status Distribution** - Summary of task counts by status
+
+Example markdown output structure:
+```markdown
+# JIRA Tasks Report
+
+Generated on: 2025-09-03 14:08:52
+
+Total tasks: 1
+
+## Summary
+
+| Key | Status | Type | Priority | Assignee |
+|-----|--------|------|----------|----------|
+| OPS-12 | In Progress | Task | Medium | Sela Lerer |
+
+## Task Details
+
+### 1. OPS-12
+
+**Basic Information:**
+- **Status:** In Progress
+- **Type:** Task
+...
 ```
 
 ## Development
@@ -197,6 +253,7 @@ TEST_COMMIT_WITH_JIRA=d54597b0ea5e6e2d026c4611a8185a60b8d03e80
 ├── jira_client.go       # JIRA API client
 ├── jira_models.go       # Data structures
 ├── jira_utils.go        # JIRA utilities
+├── markdown_generator.go # Markdown generation
 ├── errors.go            # Error types
 ├── utils.go             # File I/O
 └── *_test.go            # Test files

@@ -33,13 +33,15 @@ type AppConfig struct {
 
 // FlagConfig holds command line flags
 type FlagConfig struct {
-	JIRAIDRegex    string
-	OutputFile     string
-	ExtractOnly    bool
-	ExtractFromGit bool
-	CommitRange    bool
-	Help           bool
-	HelpLong       bool
+	JIRAIDRegex      string
+	OutputFile       string
+	ExtractOnly      bool
+	ExtractFromGit   bool
+	CommitRange      bool
+	Help             bool
+	HelpLong         bool
+	GenerateMarkdown bool
+	MarkdownOutput   string
 }
 
 // ParseFlags parses command line flags
@@ -52,6 +54,8 @@ func ParseFlags() (*FlagConfig, []string) {
 	flag.BoolVar(&flags.CommitRange, "range", false, "Process commits from the specified commit to HEAD (instead of single commit)")
 	flag.BoolVar(&flags.Help, "h", false, "Display help message")
 	flag.BoolVar(&flags.HelpLong, "help", false, "Display help message")
+	flag.BoolVar(&flags.GenerateMarkdown, "markdown", false, "Generate markdown from existing JSON file")
+	flag.StringVar(&flags.MarkdownOutput, "markdown-output", "", "Output file for markdown (default: transformed_jira_data.md)")
 	flag.Parse()
 
 	return flags, flag.Args()
@@ -67,8 +71,8 @@ func LoadConfig(flags *FlagConfig, args []string) (*AppConfig, error) {
 		SingleCommit:   !flags.CommitRange, // Default to single commit unless --range is specified
 	}
 
-	// Load JIRA credentials only if not in extract-only mode
-	if !config.ExtractOnly && !config.ExtractFromGit {
+	// Load JIRA credentials only if not in extract-only mode or markdown mode
+	if !config.ExtractOnly && !config.ExtractFromGit && !flags.GenerateMarkdown {
 		config.JIRAToken = os.Getenv("JIRA_API_TOKEN")
 		config.JIRAURL = os.Getenv("JIRA_URL")
 		config.JIRAUsername = os.Getenv("JIRA_USERNAME")
@@ -120,6 +124,8 @@ func DisplayUsage() {
 	fmt.Println("  --extract-only         Only extract JIRA IDs, don't fetch details")
 	fmt.Println("  --extract-from-git     Extract JIRA IDs from git commits (legacy mode)")
 	fmt.Println("  --range                Process commits from the specified commit to HEAD (instead of single commit)")
+	fmt.Println("  --markdown             Generate markdown from existing JSON file")
+	fmt.Println("  --markdown-output FILE Output file for markdown (default: transformed_jira_data.md)")
 	fmt.Println("  -h, --help             Display this help message")
 	fmt.Println("")
 	fmt.Println("Arguments:")
@@ -139,4 +145,6 @@ func DisplayUsage() {
 	fmt.Println("  ./main -r 'EV-\\d+' -o jira_results.json abc123def456")
 	fmt.Println("  ./main --extract-only abc123def456")
 	fmt.Println("  ./main EV-123 EV-456 EV-789         # Direct JIRA ticket processing")
+	fmt.Println("  ./main --markdown                    # Generate markdown from transformed_jira_data.json")
+	fmt.Println("  ./main --markdown --markdown-output report.md  # Generate markdown with custom output file")
 }

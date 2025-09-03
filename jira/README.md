@@ -9,6 +9,7 @@ This repository provides a GitHub Actions workflow that automates Jira ticket tr
 * **Transition History**: Captures complete workflow transitions
 * **Signed Evidence**: Attaches results to Artifactory with cryptographic signatures
 * **No Git Dependencies**: Works directly from build info without repository access
+* **Markdown Reports**: Generate human-readable reports from JIRA data
 
 ## Workflow Overview
 
@@ -65,9 +66,13 @@ The workflow will:
 1. Fetch build info from Artifactory
 2. Extract JIRA IDs from VCS messages
 3. Query JIRA API for ticket details
-4. Attach signed evidence to the build
+4. Generate both JSON and markdown reports
+5. Display markdown summary in GitHub Actions
+6. Attach signed evidence to the build (including markdown if available)
 
 ### Output Example
+
+The workflow produces a JSON file with JIRA ticket details:
 
 ```json
 {
@@ -97,22 +102,41 @@ The workflow will:
 }
 ```
 
+### Markdown Reports
+
+The workflow automatically generates markdown reports from the JIRA data, providing:
+- Summary table of all tasks
+- Detailed task information with transitions
+- Status distribution statistics
+
+This creates human-readable reports for stakeholders and documentation purposes.
+
 ## How It Works
 
 1. **Extract from Build Info**: The workflow fetches build information from Artifactory and extracts JIRA IDs from VCS messages using regex patterns (default: `[A-Z]+-[0-9]+`)
 
 2. **Process JIRA Tickets**: The helper application queries JIRA API for each ticket ID and collects status, transitions, and metadata
 
-3. **Create Evidence**: Results are attached to the build as signed evidence:
-   ```bash
-   jf evd create \
-       --build-name $BUILD_NAME \
-       --build-number $BUILD_NUMBER \
-       --key "$PRIVATE_KEY" \
-       --key-alias "$KEY_ALIAS" \
-       --predicate ./jira/helper/transformed_jira_data.json \
-       --predicate-type http://atlassian.com/jira/issues/v1
-   ```
+3. **Generate Reports**: The workflow automatically generates both JSON and markdown reports from the JIRA data
+
+4. **Create Evidence**: Results are attached to the build as signed evidence, including both the JSON data and markdown report
+
+5. **Workflow Summary**: The markdown report is displayed in the GitHub Actions workflow summary for easy viewing
+
+## Workflow Features
+
+### Automatic Markdown Generation
+The workflow automatically generates a markdown report after fetching JIRA details, providing:
+- Human-readable summary of all JIRA tickets
+- Full transition history in table format
+- Status distribution statistics
+- Direct viewing in GitHub Actions summary
+
+### Evidence with Markdown
+The evidence creation includes the markdown report using the `--markdown` option:
+- Both JSON and markdown are attached to the same evidence entry
+- The markdown provides human-readable context alongside machine-readable JSON
+- No separate evidence entries needed
 
 ## Error Handling
 
@@ -123,13 +147,7 @@ The workflow will:
 
 ## Technical Details
 
-For information about the JIRA helper tool:
-- Command-line options
-- Environment variables  
-- Building and testing
-- API integration
-
-See the [helper directory README](helper/README.md).
+For detailed information about the JIRA helper tool including command-line options, environment variables, building instructions, and API integration, see the [helper directory README](helper/README.md).
 
 ## References
 

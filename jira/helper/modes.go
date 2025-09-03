@@ -218,6 +218,11 @@ func saveJiraResults(response TransitionCheckResponse, config *AppConfig) error 
 
 // determineExecutionMode determines which mode to run based on flags and arguments
 func determineExecutionMode(flags *FlagConfig, args []string, config *AppConfig) error {
+	// Handle markdown generation mode
+	if flags.GenerateMarkdown {
+		return runMarkdownMode(flags)
+	}
+
 	// Handle legacy extract-from-git mode
 	if flags.ExtractFromGit {
 		return runLegacyExtractFromGit(args)
@@ -263,4 +268,25 @@ func allArgsMatchPattern(args []string, regex *regexp.Regexp) bool {
 		}
 	}
 	return true
+}
+
+// runMarkdownMode runs the markdown generation mode
+func runMarkdownMode(flags *FlagConfig) error {
+	// Determine input and output files
+	inputFile := getOrDefault(flags.OutputFile, os.Getenv("OUTPUT_FILE"), DefaultOutputFile)
+	outputFile := getOrDefault(flags.MarkdownOutput, "transformed_jira_data.md")
+
+	fmt.Println("=== Markdown Generation Mode ===")
+	fmt.Printf("Input JSON file: %s\n", inputFile)
+	fmt.Printf("Output Markdown file: %s\n", outputFile)
+	fmt.Println("")
+
+	// Generate markdown from JSON
+	if err := GenerateMarkdownFromJSON(inputFile, outputFile); err != nil {
+		return err
+	}
+
+	fmt.Println("")
+	fmt.Println("=== Markdown generation completed successfully ===")
+	return nil
 }
