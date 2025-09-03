@@ -25,6 +25,20 @@ spec:
         - name: signing-key
           mountPath: /etc/signkey
           readOnly: true
+        env:
+          - name: MARKDOWN
+            value: |
+              ### Deployment Evidence
+
+              ### Summary
+              - **Deployment State:** {{ .deploymentState }}
+              - **Kubernetes Cluster ID:** `{{ .k8sClusterId }}`
+              - **Time:** `{{ .time }}`
+
+              ### Running Pods
+              The following pods were found running at the time of evaluation:
+              {{ range .runningPods }}
+              - `{{ . }}`{{ end }}
         command: ["/bin/bash", "-c"]
         args:
           - |
@@ -140,19 +154,10 @@ spec:
             echo "Predicate:"
             cat predicate.json
 
-            MARKDOWN='### Deployment Evidence
-
-                        ### Summary
-                        - **Deployment State:** {{ .deploymentState }}
-                        - **Kubernetes Cluster ID:** `{{ .k8sClusterId }}`
-                        - **Time:** `{{ .time }}`
-
-                        ### Running Pods
-                        The following pods were found running at the time of evaluation:
-                        {{ range .runningPods }}
-                        - `{{ . }}`{{ end }}'
-
             echo "$MARKDOWN" > markdown.md
+            echo "Markdown files:"
+            cat markdown.md
+            echo
 
             echo "Running jf evd create"
             jf evd create --project quotopia --release-bundle "$EVD_DEMO_APP_NAME" \
