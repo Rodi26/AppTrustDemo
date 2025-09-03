@@ -174,21 +174,19 @@ jobs:
         
         echo "✅ All tests passed successfully"
 
-    # - name: Create evidence from test results
-    #   run: |
-    #     echo "📋 Creating evidence from test results..."
-    #     cd e2e-tests
+    - name: Create evidence from test results
+      run: |
+        echo "📋 Creating evidence from test results..."
+        cd e2e-tests
         
-    #     # Create evidence using the test results
-    #     jf evd create \
-    #       --build-name e2e-tests \
-    #       --build-number ${{ github.run_number }} \
-    #       --predicate test-report.json \
-    #       --markdown test-report.md \
-    #       --provider-id cypress-e2e \
-    #       --predicate-type https://cypress.io/evidence/e2e/v1
+        # Create evidence using the test results
+        jf evd create \
+          --subject-repo-path qquotopia-release-bundles-v2/quotopia-app/23/release-bundle.json.evd \
+          --predicate-type https://cypress.io/evidence/e2e/v1 --predicate test-report.json --markdown test-report.md \
+          --provider-id cypress 
+          
         
-    #     echo "✅ Evidence created successfully"
+        echo "✅ Evidence created successfully"
 
 
     - name: Display test summary
@@ -203,7 +201,7 @@ jobs:
         
         if [ -f "test-report.json" ]; then
           echo "📊 JSON Report Summary:"
-          jq '.summary' test-report.json
+          cat test-report.json
         fi
 
     - name: Cleanup Docker services
