@@ -99,37 +99,42 @@ jobs:
       - name: Get latest Docker images from Artifactory for QA environment
         id: get-images
         run: |
-          echo "🔍 Fetching latest Docker images from Artifactory..."
-          
-          # Get latest images
-          QUOTE_RESPONSE=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.JF_ACCESS_TOKEN }}" \
-            -H "Content-Type: text/plain" \
-            -d 'items.find({"repo": "quotopia-qa-docker", "name": "list.manifest.json", "path": {"$match": "quoteofday/*"}}).sort({"$desc": ["created"]}).limit(1)' \
-            "${{ vars.JF_URL }}/artifactory/api/search/aql")
-          echo "Quoteofday API Response: $QUOTE_RESPONSE"        
-      
-          QUOTE_IMAGE_TAG=$(echo "$QUOTE_RESPONSE" | jq -r '.results[0].path | split("/") | .[1] // empty')        
-          echo "✅ Found quoteofday image tag: $QUOTE_IMAGE_TAG"
-      
-          UI_RESPONSE=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.JF_ACCESS_TOKEN }}" \
-            -H "Content-Type: text/plain" \
-            -d 'items.find({"repo": "quotopia-qa-docker", "name": "list.manifest.json", "path": {"$match": "quotopia-ui/*"}}).sort({"$desc": ["created"]}).limit(1)' \
-            "${{ vars.JF_URL }}/artifactory/api/search/aql")
-          echo "quotopia-ui API Response: $UI_RESPONSE"        
-      
-          UI_IMAGE_TAG=$(echo "$UI_RESPONSE" | jq -r '.results[0].path | split("/") | .[1] // empty')        
-          echo "✅ Found quotopia-ui image tag: $UI_IMAGE_TAG"
-      
-          
+          set +e
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/content?include=sources"
+          echo "Requesting application sources: $URL"                                               
+          STATUS_CODE=$(curl -s -o result.json -w "%{http_code}" -X GET -H "Authorization: Bearer $JF_ACCESS_TOKEN" "$URL")
+                                                                                
+          if [ "$STATUS_CODE" != "200" ]; then                                  
+            echo "Reuquest failed with code $STATUS_CODE"                       
+            # Running again without silent to see errors                        
+            curl -X GET -H "Authorization: Bearer $JF_ACCESS_TOKEN" "$URL"      
+            exit 1                                                              
+          fi                             
+
+          QUOTE_NUM=""
+          UI_NUM=""
+
+          cat result.json | jq -c '.sources[] | {name: .build.name, number: .build.number}' | while read -r build_info; do
+            name=$(echo "$build_info" | jq -r '.name')                          
+            number=$(echo "$build_info" | jq -r '.number')                      
+            echo "Found build with name: $name and number: $number"
+            [ "$name" == "quoteofday" ] && QUOTE_NUM="$number"
+            [ "$name" == "quotopia-ui" ] && UI_NUM="$number"
+          done              
+        
+          if [ "" == "$QUOTE_NUM" -o "" == "$UI_NUM" ]; then
+            echo "quoteofday or quitopoia-ui version (or both) could not be found."
+            exit 1
+          fi
+
           # Set output variables
-          echo "quote_version=$QUOTE_IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "ui_version=$UI_IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "quote_version=$QUOTE_NUM" >> $GITHUB_OUTPUT
+          echo "ui_version=$UI_NUM" >> $GITHUB_OUTPUT
           
           echo "📋 Image Summary:"
-          echo "- Quoteofday: ${{ env.DOCKER_REGISTRY }}/quoteofday:$QUOTE_IMAGE_TAG"
-          echo "- Quotopia UI: ${{ env.DOCKER_REGISTRY }}/quotopia-ui:$UI_IMAGE_TAG"
+          echo "- Quoteofday: ${{ env.DOCKER_REGISTRY }}/quoteofday:$QUOTE_NUM"
+          echo "- Quotopia UI: ${{ env.DOCKER_REGISTRY }}/quotopia-ui:$UI_NUM"
 
       - name: Pull Docker images
         run: |
