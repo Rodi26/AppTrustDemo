@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  generateName: post-sync-job-evidence-
+  name: post-sync-job-evidence
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
@@ -38,6 +38,14 @@ spec:
             apt-get install -y jq
             if [ $? -ne 0 ]; then
                 echo "Failed to install jq"
+                exit 1
+            fi
+
+            # Install curl
+            echo "Installing curl"
+            apt-get install curl
+            if [ $? -ne 0 ]; then
+                echo "Failed to instll curl"
                 exit 1
             fi
 
