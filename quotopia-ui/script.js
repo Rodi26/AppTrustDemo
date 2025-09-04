@@ -1,8 +1,8 @@
 // Quote of the day functionality
 class QuotopiaApp {
     constructor() {
-        // Use host.docker.internal to access services running on the host machine
-        this.baseUrl = 'http://host.docker.internal:8001/api/quotes';
+        // Use localhost when running locally, host.docker.internal when running in Docker
+        this.baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:8001/api/quotes' : 'http://host.docker.internal:8001/api/quotes';
         this.quoteTextElement = document.getElementById('quoteText');
         this.quoteAuthorElement = document.getElementById('quoteAuthor');
         this.quoteDateElement = document.getElementById('quoteDate');
@@ -24,16 +24,23 @@ class QuotopiaApp {
     async loadQuote(date = null) {
         try {
             const url = date ? `${this.baseUrl}/date/${date}` : `${this.baseUrl}/today`;
+            console.log('Fetching quote from:', url);
+            console.log('Base URL:', this.baseUrl);
+            
             const response = await fetch(url);
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const data = await response.json();
+            console.log('Quote data received:', data);
             this.displayQuote(data);
         } catch (error) {
             console.error('Failed to fetch quote:', error);
+            console.error('Error details:', error.message);
             this.showError();
         }
     }
@@ -117,12 +124,11 @@ class QuotopiaApp {
 }
 
 // Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    new QuotopiaApp();
-});
+let quotopiaApp;
 
-// Add some interactive features
 document.addEventListener('DOMContentLoaded', () => {
+    quotopiaApp = new QuotopiaApp();
+    
     const quoteCard = document.querySelector('.quote-card');
     
     // Add click to refresh functionality
@@ -133,9 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
             quoteCard.style.transform = '';
         }, 150);
         
-        // Refresh the quote
-        const app = new QuotopiaApp();
-        await app.refreshQuote();
+        // Refresh the quote using the existing app instance
+        await quotopiaApp.refreshQuote();
     });
     
     // Add hover effect for better UX
