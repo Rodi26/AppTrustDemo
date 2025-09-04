@@ -19,6 +19,6 @@ spec:
       - name: quoteofday-container
         image: apptrustswampup.jfrog.io/quotopia-prod-docker/quoteofday:240
         ports:
-        - containerPort: 8080
+        - containerPort: 8001
       imagePullSecrets:
         - name: apptrustswampup
