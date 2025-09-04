@@ -113,6 +113,8 @@ jobs:
             echo "No changes in services versions was detected in this application version."
           else
             echo "Changes found. Updating Argo CD files."
+            sed -i "s|EVD_DEMO_APP_NAME=.*|EVD_DEMO_APP_NAME=$APP_ID|" "argocd/manifests/job-post-sync-evidence.yaml" 
+            sed -i "s|EVD_DEMO_APP_VER=.*|EVD_DEMO_APP_VER=$APP_VER|" "argocd/manifests/job-post-sync-evidence.yaml" 
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git config user.name "github-actions[bot]"
             git add argocd
