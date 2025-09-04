@@ -175,7 +175,7 @@ spec:
               MARKDOWN=${MARKDOWN/"$MATCHED_PLACEHOLDER"/"$VALUE"}                          
             done            
 
-            #echo "$MARKDOWN" > markdown.md
+            echo "$MARKDOWN" > markdown.md
             #echo "Markdown file after:"
             #cat markdown.md
             #echo
