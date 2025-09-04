@@ -126,7 +126,10 @@ func TestJiraClient_FetchJiraDetails(t *testing.T) {
 }
 
 func TestJiraClient_createErrorResult(t *testing.T) {
-	client := &JiraClient{}
+	// Test with baseURL to verify error results don't get links
+	client := &JiraClient{
+		baseURL: "https://example.atlassian.net",
+	}
 
 	tests := []struct {
 		name          string
@@ -182,6 +185,7 @@ func TestJiraClient_createErrorResult(t *testing.T) {
 
 			// Verify result
 			assert.Equal(t, tt.jiraID, result.Key)
+			assert.Equal(t, "", result.Link) // Error results should not have links
 			assert.Equal(t, ErrorStatus, result.Status)
 			assert.Equal(t, tt.expectedDesc, result.Description)
 			assert.Equal(t, ErrorType, result.Type)
@@ -202,7 +206,10 @@ func TestJiraClient_createErrorResult(t *testing.T) {
 }
 
 func TestJiraClient_createSuccessResult(t *testing.T) {
-	client := &JiraClient{}
+	// Test with baseURL to verify link generation
+	client := &JiraClient{
+		baseURL: "https://example.atlassian.net",
+	}
 
 	// Create test time
 	assigneeName := "John Doe"
@@ -257,6 +264,7 @@ func TestJiraClient_createSuccessResult(t *testing.T) {
 
 	// Verify all fields
 	assert.Equal(t, "EV-123", result.Key)
+	assert.Equal(t, "https://example.atlassian.net/browse/EV-123", result.Link)
 	assert.Equal(t, "In Progress", result.Status)
 	assert.Equal(t, "Test description", result.Description)
 	assert.Equal(t, "Task", result.Type)
@@ -270,6 +278,13 @@ func TestJiraClient_createSuccessResult(t *testing.T) {
 	assert.Len(t, result.Transitions, 1)
 	assert.Equal(t, "To Do", result.Transitions[0].FromStatus)
 	assert.Equal(t, "In Progress", result.Transitions[0].ToStatus)
+
+	// Test with empty baseURL
+	clientNoURL := &JiraClient{
+		baseURL: "",
+	}
+	resultNoURL := clientNoURL.createSuccessResult(issue)
+	assert.Equal(t, "", resultNoURL.Link)
 }
 
 func TestJiraClient_extractTransitions(t *testing.T) {
@@ -398,6 +413,7 @@ func TestJiraClient_fetchSingleJiraDetail(t *testing.T) {
 	// Test error result structure
 	errorResult := JiraTransitionResult{
 		Key:         "EV-123",
+		Link:        "", // No link for error results
 		Status:      ErrorStatus,
 		Type:        ErrorType,
 		Description: "Error: Could not retrieve issue",

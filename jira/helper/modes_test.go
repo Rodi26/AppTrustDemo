@@ -452,6 +452,7 @@ func TestSaveJiraResults(t *testing.T) {
 				Tasks: []JiraTransitionResult{
 					{
 						Key:     "EV-123",
+						Link:    "https://example.atlassian.net/browse/EV-123",
 						Status:  "Done",
 						Type:    "Task",
 						Project: "EV",

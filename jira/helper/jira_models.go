@@ -60,6 +60,7 @@ type TransitionCheckResponse struct {
 
 type JiraTransitionResult struct {
 	Key         string       `json:"key"`
+	Link        string       `json:"link,omitempty"`
 	Status      string       `json:"status"`
 	Description string       `json:"description"`
 	Type        string       `json:"type"`

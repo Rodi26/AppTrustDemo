@@ -55,8 +55,13 @@ func generateMarkdown(response TransitionCheckResponse) string {
 		if task.Assignee != nil && *task.Assignee != "" {
 			assignee = *task.Assignee
 		}
+		// Use link from JSON if available
+		keyDisplay := task.Key
+		if task.Link != "" {
+			keyDisplay = fmt.Sprintf("[%s](%s)", task.Key, task.Link)
+		}
 		sb.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
-			task.Key, task.Status, task.Type, task.Priority, assignee))
+			keyDisplay, task.Status, task.Type, task.Priority, assignee))
 	}
 	sb.WriteString("\n")
 
@@ -64,7 +69,12 @@ func generateMarkdown(response TransitionCheckResponse) string {
 	sb.WriteString("## Task Details\n\n")
 
 	for i, task := range response.Tasks {
-		sb.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, task.Key))
+		// Use link from JSON if available
+		keyDisplay := task.Key
+		if task.Link != "" {
+			keyDisplay = fmt.Sprintf("[%s](%s)", task.Key, task.Link)
+		}
+		sb.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, keyDisplay))
 
 		// Basic information
 		sb.WriteString("**Basic Information:**\n")

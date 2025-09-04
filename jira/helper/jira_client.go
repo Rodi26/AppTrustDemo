@@ -10,7 +10,8 @@ import (
 
 // JiraClient wraps the JIRA client and provides methods for JIRA operations
 type JiraClient struct {
-	client *jira.Client
+	client  *jira.Client
+	baseURL string
 }
 
 // NewJiraClient creates a new JIRA client with authentication
@@ -41,7 +42,10 @@ func NewJiraClient() (*JiraClient, error) {
 		return nil, fmt.Errorf("failed to create JIRA client: %w", err)
 	}
 
-	return &JiraClient{client: client}, nil
+	return &JiraClient{
+		client:  client,
+		baseURL: jiraURL,
+	}, nil
 }
 
 // FetchJiraDetails fetches JIRA details sequentially
@@ -79,6 +83,7 @@ func (jc *JiraClient) createErrorResult(jiraID string, err error) JiraTransition
 
 	return JiraTransitionResult{
 		Key:         jiraID,
+		Link:        "", // No link for error results
 		Status:      ErrorStatus,
 		Description: errorMsg,
 		Type:        ErrorType,
@@ -94,8 +99,15 @@ func (jc *JiraClient) createErrorResult(jiraID string, err error) JiraTransition
 
 // createSuccessResult creates a result from a successfully fetched JIRA issue
 func (jc *JiraClient) createSuccessResult(issue *jira.Issue) JiraTransitionResult {
+	// Create the JIRA link
+	link := ""
+	if jc.baseURL != "" {
+		link = fmt.Sprintf("%s/browse/%s", jc.baseURL, issue.Key)
+	}
+
 	result := JiraTransitionResult{
 		Key:         issue.Key,
+		Link:        link,
 		Status:      getStatusName(issue.Fields.Status),
 		Description: getDescription(issue.Fields.Description),
 		Type:        getIssueTypeName(issue.Fields.Type),

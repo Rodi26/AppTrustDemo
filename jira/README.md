@@ -79,6 +79,7 @@ The workflow produces a JSON file with JIRA ticket details:
   "tasks": [
     {
       "key": "EV-123",
+      "link": "https://example.atlassian.net/browse/EV-123",
       "status": "In Progress",
       "description": "Task description",
       "type": "Task",
@@ -108,6 +109,7 @@ The workflow automatically generates markdown reports from the JIRA data, provid
 - Summary table of all tasks
 - Detailed task information with transitions
 - Status distribution statistics
+- Clickable links to JIRA tickets (automatically included in the data)
 
 This creates human-readable reports for stakeholders and documentation purposes.
 

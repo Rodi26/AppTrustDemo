@@ -120,11 +120,12 @@ func TestGenerateMarkdown(t *testing.T) {
 		checks   []string // Strings that should appear in the output
 	}{
 		{
-			name: "Single task with transitions",
+			name: "Single task with transitions and link",
 			response: TransitionCheckResponse{
 				Tasks: []JiraTransitionResult{
 					{
 						Key:         "EV-123",
+						Link:        "https://example.atlassian.net/browse/EV-123",
 						Status:      "Done",
 						Description: "Test description",
 						Type:        "Task",
@@ -149,8 +150,8 @@ func TestGenerateMarkdown(t *testing.T) {
 			checks: []string{
 				"# JIRA Tasks Report",
 				"Total tasks: 1",
-				"| EV-123 | Done | Task | High | John Doe |",
-				"### 1. EV-123",
+				"[EV-123](https://example.atlassian.net/browse/EV-123)",
+				"### 1. [EV-123](https://example.atlassian.net/browse/EV-123)",
 				"**Status:** Done",
 				"**Type:** Task",
 				"**Assignee:** John Doe",
@@ -208,7 +209,8 @@ func TestGenerateMarkdown(t *testing.T) {
 				},
 			},
 			checks: []string{
-				"| ERR-789 | Error | Error |  | Unassigned |",
+				"| ERR-789 | Error | Error |  | Unassigned |", // No link for error tasks
+				"### 1. ERR-789", // No link in header for error tasks
 				"**Created:** N/A",
 				"**Updated:** N/A",
 				"> Error: Could not retrieve issue",
@@ -273,11 +275,12 @@ func TestGenerateMarkdown(t *testing.T) {
 			},
 		},
 		{
-			name: "Task with multiline description",
+			name: "Task with multiline description and link",
 			response: TransitionCheckResponse{
 				Tasks: []JiraTransitionResult{
 					{
 						Key:         "MULTI-123",
+						Link:        "https://test.atlassian.net/browse/MULTI-123",
 						Status:      "Open",
 						Description: "Line 1\nLine 2\nLine 3",
 						Type:        "Task",
@@ -293,6 +296,7 @@ func TestGenerateMarkdown(t *testing.T) {
 			},
 			checks: []string{
 				"> Line 1\n> Line 2\n> Line 3",
+				"[MULTI-123](https://test.atlassian.net/browse/MULTI-123)",
 			},
 		},
 	}

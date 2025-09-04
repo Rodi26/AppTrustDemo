@@ -116,6 +116,7 @@ The tool outputs a JSON file with JIRA ticket details and their transition histo
   "tasks": [
     {
       "key": "EV-123",
+      "link": "https://example.atlassian.net/browse/EV-123",
       "status": "In Progress",
       "description": "Task description",
       "type": "Task",
@@ -164,6 +165,7 @@ The markdown generation feature creates a comprehensive report with:
   - Description
   - Transition history
 - **Status Distribution** - Summary of task counts by status
+- **Clickable JIRA Links** - When JIRA URLs are included in the JSON data, ticket keys become clickable links
 
 Example markdown output structure:
 ```markdown
