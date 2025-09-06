@@ -21,8 +21,21 @@ run_port_forward() {
 
 # Run each port-forward command in the background
 run_port_forward svc/argocd-server 8080 443 argocd &
+PID1="$!"
 run_port_forward service/quotopia-ui-service 9000 80 quotopia &
+PID2="$!"
 run_port_forward service/quoteofday-service 8001 8001 quotopia &
+PID3="$!"
+
+killcommands() {
+    echo "Killing the port-forward commands..."
+    kill "$PID1"
+    kill "$PID2"
+    kill "$PID3"
+    echo "Done"
+}
+
+trap killcommands SIGINT SIGTERM
 
 echo "All port-forwarding processes are running in the background. Press Ctrl+C to stop them."
 
