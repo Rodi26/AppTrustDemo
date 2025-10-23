@@ -22,7 +22,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        
     - name: Cache pip packages
       uses: actions/cache@v4
       with:
@@ -31,25 +37,19 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-test-${{ hashFiles('translate/requirements-optimized.txt') }}
           ${{ runner.os }}-pip-test
-      
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-        
+
     - name: Install dependencies and run tests
       run: |
         cd translate
         # Install only production dependencies for testing
-        pip install -r requirements-optimized.txt
+        pip install --no-cache-dir -r requirements-optimized.txt
         # Install minimal test dependencies
-        pip install pytest pytest-asyncio
+        pip install --no-cache-dir pytest pytest-asyncio
         python -m pytest tests/ -v --tb=short
         
-    # - name: Cleanup pip cache
-    #   run: |
-    #     pip cache purge
+    - name: Cleanup pip cache
+      run: |
+        pip cache purge
 
   build:
     name: Build Docker Image
