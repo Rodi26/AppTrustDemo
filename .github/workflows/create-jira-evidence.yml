@@ -37,6 +37,7 @@ jobs:
       BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
+      PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
 
     steps:
       - name: Setup jfrog cli
@@ -44,6 +45,7 @@ jobs:
         env:
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
+          JF_PROJECT: "btcwallet"
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Setup Go
@@ -63,7 +65,7 @@ jobs:
           echo "Fetching build info for ${{ env.BUILD_NAME }} ${{ env.BUILD_NUMBER }}..."
           
           # Fetch build info using JFrog CLI and extract VCS message
-          BUILD_INFO=$(jf rt curl -X GET "/api/build/${{ env.BUILD_NAME }}/${{ env.BUILD_NUMBER }}" -s)
+          BUILD_INFO=$(jf rt curl -X GET "/api/build/${{ env.BUILD_NAME }}/${{ env.BUILD_NUMBER }}?project=btcwallet" -s)
           VCS_MESSAGE=$(echo "$BUILD_INFO" | jq -r '.buildInfo.vcs[0].message // empty')
           
           if [ -z "$VCS_MESSAGE" ]; then
@@ -117,7 +119,7 @@ jobs:
 
       - name: Create JIRA evidence
         run: |
-          SUBJECT_PATH="quotopia-dev-docker/${{ env.BUILD_NAME }}/${{ env.BUILD_NUMBER }}/list.manifest.json"
+          SUBJECT_PATH="${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.BUILD_NAME }}/${{ env.BUILD_NUMBER }}/list.manifest.json"
           echo "SUBJECT_PATH=$SUBJECT_PATH"
 
           if [ -f ./jira/helper/transformed_jira_data.json ]; then
