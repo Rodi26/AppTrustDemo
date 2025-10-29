@@ -12,6 +12,13 @@ on:
 env:
   DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
 
+permissions:
+  actions: read           # for detecting the Github Actions environment
+  id-token: write         # for creating OIDC tokens for signing
+  packages: write         # for uploading attestations
+  contents: read          # read the contents permission
+  security-events: write  # for uploading code scanning
+
 jobs:
   test:
     name: Test Python Service
@@ -71,6 +78,7 @@ jobs:
       with:
         version: latest
         oidc-provider-name: btcwallet-gh
+        oidc-audience: btcwallet-gh
       env:
         JF_URL: ${{ vars.JF_URL }}
         # JF_USER: ${{ vars.JF_USER }}
