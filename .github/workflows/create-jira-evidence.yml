@@ -125,6 +125,7 @@ jobs:
           if [ -f ./jira/helper/transformed_jira_data.json ]; then
             jf evd create \
               --subject-repo-path="$SUBJECT_PATH" \
+              --project btcwallet \
               --predicate ./jira/helper/transformed_jira_data.json \
               --predicate-type http://atlassian.com/jira/issues/v1 \
               --markdown ./jira/helper/transformed_jira_data.md \
