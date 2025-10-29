@@ -125,9 +125,9 @@ jobs:
           echo "NEXT_VER=$NEXT_VER"
   
           REQUEST_BODY="{\"version\": \"$NEXT_VER\", \"sources\": {\"builds\": [\
-          {\"name\":\"btcwallet\", \"number\":\"$BTCWALLET_BUILD_NUMBER\", \"repository_key\":"btcwallet-build-info", \"include_dependencies\":false},\
-          {\"name\":\"btcwallet-ui\", \"number\":\"$BTCWALLET_UI_BUILD_NUMBER\", \"repository_key\":"btcwallet-build-info", \"include_dependencies\":false},\
-          {\"name\":\"ai-translate\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"repository_key\":"btcwallet-build-info", \"include_dependencies\":false}\
+          {\"name\":\"btcwallet\", \"number\":\"$BTCWALLET_BUILD_NUMBER\", \"repository_key\":\"btcwallet-build-info\", \"include_dependencies\":false},\
+          {\"name\":\"btcwallet-ui\", \"number\":\"$BTCWALLET_UI_BUILD_NUMBER\", \"repository_key\":\"btcwallet-build-info\", \"include_dependencies\":false},\
+          {\"name\":\"ai-translate\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"repository_key\":\"btcwallet-build-info\", \"include_dependencies\":false}\
           ]}}"
           echo "REQUEST_BODY=$REQUEST_BODY"
 
