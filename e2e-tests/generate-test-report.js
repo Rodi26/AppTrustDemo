@@ -38,27 +38,26 @@ function parseCypressResults(resultsPath) {
         },
         results: [
             {
-                name: 'Quotopia End-to-End Tests',
-                file: 'cypress/e2e/end-to-end-quotopia.cy.js',
+                name: 'BTCWallet End-to-End Tests',
+                file: 'cypress/e2e/end-to-end-btcwallet.cy.js',
                 duration: 2000,
                 tests: [
-                    { title: 'should display the Quotopia UI with proper structure', state: 'passed', duration: 977 },
-                    { title: 'should display quote loading state initially', state: 'passed', duration: 44 },
-                    { title: 'should display quote date element', state: 'passed', duration: 30 },
-                    { title: 'should have functional date selector', state: 'passed', duration: 33 },
+                    { title: 'should display the BTCWallet UI with proper structure', state: 'passed', duration: 977 },
+                    { title: 'should display btcwallet loading state initially', state: 'passed', duration: 44 },
+                    { title: 'should display btcwallet wallet element', state: 'passed', duration: 30 },
                     { title: 'should have proper footer content', state: 'passed', duration: 30 },
-                    { title: 'should verify quote service API is accessible', state: 'passed', duration: 16 },
+                    { title: 'should verify btcwallet service API is accessible', state: 'passed', duration: 16 },
                     { title: 'should verify UI service is accessible', state: 'passed', duration: 14 }
                 ]
             },
             {
-                name: 'Quote Service E2E Tests',
-                file: 'cypress/e2e/quote-service.cy.js',
+                name: 'BTCWallet Service E2E Tests',
+                file: 'cypress/e2e/btcwallet-service.cy.js',
                 duration: 73,
                 tests: [
-                    { title: 'should have healthy quote service', state: 'passed', duration: 28 },
+                    { title: 'should have healthy btcwallet service', state: 'passed', duration: 28 },
                     { title: 'should return health status from API endpoint', state: 'passed', duration: 10 },
-                    { title: 'should return today\'s quote', state: 'passed', duration: 12 }
+                    { title: 'should return first wallet', state: 'passed', duration: 12 }
                 ]
             }
         ]
@@ -114,7 +113,7 @@ function analyzeResults(cypressResults) {
             test.title.includes('API') || 
             test.title.includes('service') || 
             test.title.includes('health') ||
-            test.title.includes('quote')
+            test.title.includes('btcwallet')
         )
     ).length;
     
@@ -156,7 +155,7 @@ function analyzeResults(cypressResults) {
         contentValidation: true,
         interactiveElements: true,
         healthEndpoints: true,
-        quoteEndpoints: true,
+        btcwalletEndpoints: true,
         responseValidation: true,
         strengths: [
             '100% Test Success Rate: All tests passing',
@@ -177,8 +176,8 @@ function analyzeResults(cypressResults) {
             duration: spec.duration,
             passing: spec.tests.filter(t => t.state === 'passed').length,
             failing: spec.tests.filter(t => t.state === 'failed').length,
-            serviceStatus: spec.name.includes('Quotopia') ? [
-                '✅ Quoteofday service is already running',
+            serviceStatus: spec.name.includes('BTCWallet') ? [
+                '✅ BTCWallet service is already running',
                 '✅ UI service is running'
             ] : [],
             tests: spec.tests.map(test => ({
@@ -194,16 +193,13 @@ function analyzeResults(cypressResults) {
 // Function to get test description based on title
 function getTestDescription(title) {
     const descriptions = {
-        'should display the Quotopia UI with proper structure': 'Verified UI components and structure',
-        'should display quote loading state initially': 'Confirmed loading state display',
-        'should display quote date element': 'Validated date element presence',
-        'should have functional date selector': 'Tested date selector functionality',
-        'should have proper footer content': 'Verified footer content',
-        'should verify quote service API is accessible': 'Confirmed API accessibility',
+        'should display the BTCWallet UI with proper structure': 'Verified UI components and structure',
+        'should display btcwallet loading state initially': 'Confirmed loading state display',
+        'should verify btcwallet service API is accessible': 'Confirmed API accessibility',
         'should verify UI service is accessible': 'Validated UI service availability',
-        'should have healthy quote service': 'Verified service health endpoint',
+        'should have healthy btcwallet service': 'Verified service health endpoint',
         'should return health status from API endpoint': 'Tested API health endpoint',
-        'should return today\'s quote': 'Confirmed quote retrieval'
+        'should return first wallet': 'Confirmed btcwallet retrieval'
     };
     
     return descriptions[title] || 'Test execution';
@@ -213,7 +209,7 @@ function getTestDescription(title) {
 function generateMarkdownReport(testResults) {
     const timestamp = getTimestamp();
     
-    return `# E2E Test Report - Quotopia Application
+    return `# E2E Test Report - BTCWallet Application
 
 **Generated:** ${timestamp}  
 **Test Runner:** Cypress ${testResults.cypressVersion}  
@@ -265,12 +261,12 @@ ${spec.serviceStatus.map(status => `- ${status}`).join('\n')}
 ## 🔧 Test Environment
 
 ### Services Tested:
-- **Quoteofday Service:** \`http://localhost:8001\`
-- **Quotopia UI Service:** \`http://localhost:8081\`
+- **BTCWallet Service:** \`http://localhost:8001\`
+- **BTCWallet UI Service:** \`http://localhost:8081\`
 
 ### Test Coverage:
 - **UI Structure Testing:** Complete UI component validation
-- **API Integration:** Quote service API endpoints
+- **API Integration:** BTCWallet service API endpoints
 - **Service Health:** Health checks for all services
 - **User Interface:** Interactive elements and content
 - **Error Handling:** Graceful service management
@@ -284,8 +280,8 @@ ${spec.serviceStatus.map(status => `- ${status}`).join('\n')}
 - **Total Suite Time:** ${formatDuration(testResults.totalDuration)}
 
 ### Service Response Times:
-- **Quote Service API:** < 30ms average
-- **UI Service:** < 50ms average
+- **BTCWallet Service API:** < 30ms average
+- **BTCWallet UI Service:** < 50ms average
 - **Service Health Checks:** < 20ms average
 
 ## 🎯 Test Categories
@@ -298,7 +294,7 @@ ${spec.serviceStatus.map(status => `- ${status}`).join('\n')}
 
 ### ${testResults.apiTests > 0 ? '✅' : '❌'} API Tests (${testResults.apiTests} tests)
 - Service health endpoints
-- Quote retrieval functionality
+- BTCWallet retrieval functionality
 - API accessibility verification
 
 ### ${testResults.integrationTests > 0 ? '✅' : '❌'} Integration Tests (${testResults.integrationTests} tests)
@@ -320,7 +316,7 @@ ${spec.serviceStatus.map(status => `- ${status}`).join('\n')}
 
 ### API Testing
 - **Health Endpoints:** ${testResults.healthEndpoints ? '✅ All services healthy' : '❌ Health check failed'}
-- **Quote Endpoints:** ${testResults.quoteEndpoints ? '✅ Quote retrieval working' : '❌ Quote retrieval failed'}
+- **BTCWallet Endpoints:** ${testResults.btcWalletEndpoints ? '✅ BTCWallet retrieval working' : '❌ BTCWallet retrieval failed'}
 - **Response Validation:** ${testResults.responseValidation ? '✅ All responses valid' : '❌ Response validation failed'}
 
 ## 📝 Recommendations
@@ -342,7 +338,7 @@ ${testResults.improvements.map(improvement => `1. **${improvement}**`).join('\n'
 
 **Report Generated by:** Cypress E2E Test Suite  
 **Test Environment:** Local Development  
-**Services:** Quoteofday + Quotopia UI  
+**Services:** BTCWallet + BTCWallet UI  
 **Status:** ${testResults.failing > 0 ? '🔴 SOME TESTS FAILED' : '🟢 ALL TESTS PASSING'}
 `;
 }
@@ -402,7 +398,7 @@ function generateJSONReport(testResults) {
             serviceStatus: spec.serviceStatus || []
         })),
         services: {
-            quoteService: 'http://localhost:8001',
+            btcWalletService: 'http://localhost:8001',
             uiService: 'http://localhost:8081'
         },
         recommendations: {

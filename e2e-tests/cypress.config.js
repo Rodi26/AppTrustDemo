@@ -22,7 +22,7 @@ module.exports = defineConfig({
     video: false,
     screenshotOnRunFailure: false,
     env: {
-      quoteServiceUrl: 'http://localhost:8001',
+      btcWalletServiceUrl: 'http://localhost:8001',
       uiServiceUrl: 'http://localhost:8081'
     },
     // Performance optimizations
@@ -44,45 +44,45 @@ module.exports = defineConfig({
           return await checkServiceHealth(url, endpoint)
         },
         
-        async startServicesIfNeeded({ quoteServiceUrl, uiServiceUrl }) {
+        async startServicesIfNeeded({ btcWalletServiceUrl, uiServiceUrl }) {
           console.log('🔍 Checking if services are running...')
-          
-          // Check quote service
-          const quoteHealth = await checkServiceHealth(quoteServiceUrl)
-          if (!quoteHealth.running) {
-            console.log('🚀 Starting quoteofday service...')
+
+          // Check BTC Wallet service
+          const btcWalletHealth = await checkServiceHealth(btcWalletServiceUrl)
+          if (!btcWalletHealth.running) {
+            console.log('🚀 Starting BTC Wallet service...')
             try {
-              await execAsync('cd ../quoteofday && ./mvnw spring-boot:run -Dspring-boot.run.profiles=qa', { 
+              await execAsync('cd ../btc-wallet && ./mvnw spring-boot:run -Dspring-boot.run.profiles=qa', {
                 cwd: process.cwd(),
                 stdio: 'pipe'
               })
-              console.log('✅ Quoteofday service started')
+              console.log('✅ BTC Wallet service started')
             } catch (error) {
-              console.log('⚠️ Quoteofday service may already be running or failed to start')
+              console.log('⚠️ BTC Wallet service may already be running or failed to start')
             }
           } else {
-            console.log('✅ Quoteofday service is already running')
+            console.log('✅ BTC Wallet service is already running')
           }
           
           // Check UI service (we'll assume it's running via Docker or manually)
           const uiHealth = await checkServiceHealth(uiServiceUrl, '/')
           if (!uiHealth.running) {
             console.log('⚠️ UI service is not running. Please start it manually or via Docker.')
-            console.log('   You can start it with: cd ../quotopia-ui && docker run -p 8081:80 quotopia-ui:latest')
+            console.log('   You can start it with: cd ../btcwallet-ui && docker run -p 8081:80 btcwallet-ui:latest')
           } else {
             console.log('✅ UI service is running')
           }
-          
-          return { quoteService: quoteHealth.running, uiService: uiHealth.running }
+
+          return { btcWalletService: btcWalletHealth.running, uiService: uiHealth.running }
         },
         
         async stopService(serviceName) {
           console.log(`🛑 Stopping ${serviceName} service...`)
           try {
-            if (serviceName === 'quoteofday') {
+            if (serviceName === 'btcwallet') {
               // Find and kill the Java process
               await execAsync("pkill -f 'spring-boot:run'")
-              console.log('✅ Quoteofday service stopped')
+              console.log('✅ BTC Wallet service stopped')
             }
             return { success: true }
           } catch (error) {
@@ -94,12 +94,12 @@ module.exports = defineConfig({
         async startService(serviceName) {
           console.log(`🚀 Starting ${serviceName} service...`)
           try {
-            if (serviceName === 'quoteofday') {
-              await execAsync('cd ../quoteofday && ./mvnw spring-boot:run -Dspring-boot.run.profiles=qa', {
+            if (serviceName === 'btcwallet') {
+              await execAsync('cd ../btcwallet && ./mvnw spring-boot:run -Dspring-boot.run.profiles=qa', {
                 cwd: process.cwd(),
                 stdio: 'pipe'
               })
-              console.log('✅ Quoteofday service started')
+              console.log('✅ BTC Wallet service started')
             }
             return { success: true }
           } catch (error) {
