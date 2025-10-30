@@ -3,14 +3,21 @@ name: Create Application Version
 on:
   workflow_dispatch:
 
+permissions:
+  actions: read           # for detecting the Github Actions environment
+  id-token: write         # for creating OIDC tokens for signing
+  packages: write         # for uploading attestations
+  contents: read          # read the contents permission
+  security-events: write  # for uploading code scanning
+
 jobs:
   create-application-version:
     name: Create Application Version
     runs-on: ubuntu-latest
     env:
       JF_URL: ${{ vars.JF_URL }}
-      JF_USER: ${{ vars.JF_USER }}
-      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      # JF_USER: ${{ vars.JF_USER }}
+      # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       APP_ID: btcwalletapp
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
@@ -20,10 +27,13 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         with:
           version: latest
+          oidc-provider-name: btcwallet-gh
+          oidc-audience: btcwallet-gh
+        id: setup-cli
         env:
           JF_URL: ${{ vars.JF_URL }}
-          JF_USER: ${{ vars.JF_USER }}
-          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+          # JF_USER: ${{ vars.JF_USER }}
+          # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
           JF_PROJECT: "btcwallet"
 
       - name: Get latest services build numbers
@@ -33,7 +43,7 @@ jobs:
           getBuildNumber() {
             echo "Requeseting build ${{ vars.JF_URL }}/artifactory/api/build/$1?project=btcwallet" >&2
             local RESPONSE=$(curl -s -X GET \
-                                -H "Authorization: Bearer ${{ secrets.JF_ACCESS_TOKEN }}" \
+                                -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
                                 "${{ vars.JF_URL }}/artifactory/api/build/$1?project=btcwallet")
             local LATEST_BUILD_NUMBER=$(echo "$RESPONSE" | \
                                 jq -r '.buildsNumbers | sort_by(.started) | reverse | .[0].uri | ltrimstr("/")')
@@ -77,7 +87,7 @@ jobs:
 
           # Use curl to get the HTTP status code and save the body to a temp file.
           HTTP_CODE=$(curl -sS -o "$RESPONSE_BODY_FILE" -w "%{http_code}" \
-            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
+            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
             "$API_URL")
 
           echo "HTTP Response Code: $HTTP_CODE"
@@ -131,13 +141,13 @@ jobs:
           ]}}"
           echo "REQUEST_BODY=$REQUEST_BODY"
 
-  
-          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false")
+
+          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false")
           echo "STATUS_CODE=$STATUS_CODE"
           if [ "201" != "$STATUS_CODE" ]; then 
               echo "Status code is not 201: $STATUS_CODE"
-              # Running the request again without silent and output flags to see details about the problem 
-              curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false"
+              # Running the request again without silent and output flags to see details about the problem
+              curl -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false"
               exit 1
           fi
           echo "app_ver=$NEXT_VER" >> $GITHUB_OUTPUT
@@ -153,12 +163,12 @@ jobs:
           echo "REQUEST_BODY: $REQUEST_BODY"
           echo "REQUEST_URL: $REQUEST_URL"
 
-          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$REQUEST_URL")
+          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$REQUEST_URL")
           echo "STATUS_CODE=$STATUS_CODE"
           if [ "200" != "$STATUS_CODE" -a "201" != "$STATUS_CODE" ]; then 
               echo "Status code is not 200 or 201: $STATUS_CODE"
               # Running the request again without silent and output flags to see details about the problem 
-              curl -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$REQUEST_URL"
+              curl -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$REQUEST_URL"
               exit 1
           fi
           echo "Successfully promoted $APP_ID version $APP_VER to DEV"
