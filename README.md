@@ -1,4 +1,9 @@
-# Quotopia - JFrog Evidence Integration Demo
+<p align="center" style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+  <img src="./btcwallet-ui/swampup25-logo.svg" alt="Logo" width="300"/>
+  <img src="./btcwallet-ui/btcwallet.png" alt="Logo" width="200"/>
+</p>
+
+# BTC Wallet - JFrog Evidence Integration Demo
 
 A comprehensive demonstration of JFrog Evidence solution integration with CI/CD workflows, showcasing evidence creation from multiple sources and automated promotion flows from development to production.
 
@@ -10,34 +15,34 @@ This project demonstrates how to integrate JFrog Evidence with GitHub Actions CI
 
 - **Multi-technology Stack**: Java+Maven, Python, and Static HTML/JS applications
 - **GitHub Actions CI/CD**: Automated builds, tests, and deployments
-- **Evidence Collection**: JUnit tests, SonarQube analysis, Grype security scans, Cypress E2E tests, and JIRA issue tracking
-- **Automated Promotion Flow**: DEV → QA → PROD with evidence validation
+- **Evidence Collection**: JIRA issue tracking, JUnit tests, SonarQube analysis, and Cypress E2E tests
+- **Automated Promotion Flow**: DEV → QA → PreProd → PROD with evidence validation
 - **AppTrust Gating**: Production releases require all evidence gates to pass
 - **Release Bundle Management**: Application versioning with complete artifact traceability
 
 ## 🏗️ Architecture
 
-The Quotopia application consists of three microservices, each demonstrating different technology stacks:
+The BTC Wallet application consists of three microservices, each demonstrating different technology stacks:
 
 ### Services Overview
 
 | Service | Technology | Port | Purpose | Docker Image |
 |---------|------------|------|---------|--------------|
-| **quoteofday** | Java + Maven + Spring Boot | 8001 | REST API for daily inspirational quotes | `quotopia-dev-docker/quoteofday` |
-| **ai-translate** | Python + FastAPI | 8002 | AI translation service using Helsinki-NLP model | `quotopia-dev-docker/ai-translate` |
-| **quotopia-ui** | Static Website (HTML/CSS/JS) | 80 | Frontend for quote display and interaction | `quotopia-dev-docker/quotopia-ui` |
+| **btcwallet** | Java + Maven + Spring Boot | 8001 | REST API for bitcoin wallets | `btcwallet-dev-docker/btcwallet` |
+| **ai-translate** | Python + FastAPI | 8002 | AI translation service using Helsinki-NLP model | `btcwallet-dev-docker/ai-translate` |
+| **btcwallet-ui** | Static Website (HTML/CSS/JS) | 80 | Frontend for bitcoin wallet display and interaction | `btcwallet-dev-docker/btcwallet-ui` |
 
 ### Service Details
 
-#### Quote of Day Service
+#### BTCWallet Service
 - **Framework**: Spring Boot 3.2.0 with Java 21
 - **Build Tool**: Maven
 - **Testing**: JUnit 5 with comprehensive test coverage
-- **Quality Gates**: SonarQube analysis and Gradle Develocity attestation
+- **Quality Gates**: SonarQube analysis
 - **API Endpoints**: 
-  - `GET /api/quotes/today` - Today's quote
-  - `GET /api/quotes/date/{date}` - Quote for specific date
-  - `GET /api/quotes/health` - Health check
+  - `GET /api/btcwallet/first` - First wallet
+  - `GET /api/btcwallet/address/{address}` - Wallet by specific address
+  - `GET /api/btcwallet/health` - Health check
 
 #### AI Translation Service
 - **Framework**: FastAPI with Python 3.11
@@ -48,10 +53,10 @@ The Quotopia application consists of three microservices, each demonstrating dif
   - `POST /translate/batch` - Batch translation
   - `GET /health` - Service health check
 
-#### Quotopia UI
+#### BTCWallet UI
 - **Technology**: Pure HTML/CSS/JavaScript
-- **Features**: Responsive design, interactive quote cards, date selection
-- **Integration**: Consumes quoteofday API for dynamic content
+- **Features**: Responsive design, interactive wallet cards
+- **Integration**: Consumes btcwallet API for dynamic content
 - **Testing**: Cypress E2E tests for full user journey validation
 
 ## 🔄 CI/CD Workflows
@@ -60,10 +65,10 @@ The project implements a comprehensive CI/CD pipeline with evidence collection a
 
 ### Individual Service Builds
 
-#### A. Quote of Day Service CI
-**File**: `.github/workflows/quoteofday-ci.yml`
+#### A. BTCWallet CI
+**File**: `.github/workflows/btcwallet-ci.yml`
 
-**Triggers**: Push to `quoteofday/**` or manual dispatch
+**Triggers**: Push to `btcwallet/**` or manual dispatch
 
 **Process**:
 1. **Build Phase**:
@@ -73,7 +78,6 @@ The project implements a comprehensive CI/CD pipeline with evidence collection a
    
 2. **Quality Gates**:
    - SonarQube code quality analysis
-   - Gradle Develocity build attestation
    
 3. **Containerization**:
    - Multi-architecture Docker build (amd64, arm64)
@@ -99,17 +103,15 @@ The project implements a comprehensive CI/CD pipeline with evidence collection a
    - Registry caching for build optimization
    
 3. **Security Scanning**:
-   - Grype vulnerability scan
    - Evidence creation from scan results
    
 4. **Evidence Creation**:
-   - Security scan evidence
    - JIRA issue tracking evidence
 
-#### C. Quotopia UI Service CI
-**File**: `.github/workflows/quotopia-ui-ci.yml`
+#### C. BTCWallet UI Service CI
+**File**: `.github/workflows/btcwallet-ui-ci.yml`
 
-**Triggers**: Push to `quotopia-ui/**` or manual dispatch
+**Triggers**: Push to `btcwallet-ui/**` or manual dispatch
 
 **Process**:
 1. **Containerization**:
@@ -187,7 +189,7 @@ The system creates evidence from multiple sources throughout the CI/CD pipeline:
 
 | Evidence Type | Source | Predicate Type | Provider | Purpose |
 |---------------|--------|----------------|----------|---------|
-| **JUnit Test Results** | quoteofday tests | `https://jfrog.com/evidence/test-results/v1` | junit | Unit test coverage and results |
+| **JUnit Test Results** | btcwallet tests | `https://jfrog.com/evidence/test-results/v1` | junit | Unit test coverage and results |
 | **SonarQube Analysis** | Code quality scan | Integration | sonar | Code quality metrics and issues |
 | **Grype Security Scan** | ai-translate container | `https://anchore.com/evidence/grype/v1` | anchore | Vulnerability assessment |
 | **Cypress E2E Tests** | End-to-end testing | `https://cypress.io/evidence/e2e/v1` | cypress | Integration and UI testing |
@@ -198,15 +200,15 @@ The system creates evidence from multiple sources throughout the CI/CD pipeline:
 ```
 evidence-integration/
 ├── .github/workflows/          # GitHub Actions CI/CD workflows
-│   ├── quoteofday-ci.yml       # Java service build pipeline
+│   ├── btcwallet-ci.yml       # Java service build pipeline
 │   ├── ai-translate-ci.yml     # Python service build pipeline
-│   ├── quotopia-ui-ci.yml      # UI service build pipeline
+│   ├── btcwallet-ui-ci.yml      # UI service build pipeline
 │   ├── create-application-version.yml    # Application versioning
 │   ├── promote-application-version.yml   # QA promotion
 │   ├── release-application-version.yml   # PROD release
 │   ├── end2end-tests.yml       # E2E testing workflow
 │   └── create-jira-evidence.yml # JIRA evidence helper
-├── quoteofday/                 # Java + Maven service
+├── btcwallet/                 # Java + Maven service
 │   ├── src/                    # Source code
 │   ├── target/                 # Build artifacts
 │   ├── Dockerfile              # Container definition
@@ -217,7 +219,7 @@ evidence-integration/
 │   ├── tests/                  # Test suite
 │   ├── Dockerfile              # Container definition
 │   └── README.md               # Service documentation
-├── quotopia-ui/                # Static website
+├── btcwallet-ui/                # Static website
 │   ├── index.html              # Main page
 │   ├── styles.css              # Styling
 │   ├── script.js               # JavaScript logic
@@ -244,31 +246,6 @@ evidence-integration/
 - **GitHub Repository**: With Actions enabled
 - **Docker**: For local testing and development
 - **Required Access**: JFrog, SonarQube, JIRA, and GitHub tokens
-
-### GitHub Configuration
-
-#### Required Secrets
-
-| Secret | Description | Example |
-|--------|-------------|---------|
-| `JF_ACCESS_TOKEN` | JFrog access token with read/write permissions | `cmVmdGtuOjAxOjE2...` |
-| `JFROG_CLI_SIGNING_KEY` | Private key for evidence signing | `-----BEGIN PRIVATE KEY-----...` |
-| `SONAR_TOKEN` | SonarQube authentication token | `squ_1234567890abcdef...` |
-| `JIRA_API_TOKEN` | JIRA API token for issue tracking | `ATATT3xFfGF0...` |
-| `ARTIFACTORY_ACCESS_TOKEN` | Artifactory access token | `cmVmdGtuOjAxOjE2...` |
-| `DEVELOCITY_ACCESS_KEY` | Gradle Develocity access key | `gradle-develocity-key...` |
-
-#### Required Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `JF_URL` | JFrog platform URL | `https://mycompany.jfrog.io` |
-| `JF_USER` | JFrog username | `admin` |
-| `DOCKER_REGISTRY` | Docker registry URL | `mycompany.jfrog.io/quotopia-dev-docker` |
-| `JFROG_CLI_KEY_ALIAS` | Key alias for evidence signing | `my-signing-key` |
-| `JIRA_URL` | JIRA instance URL | `https://mycompany.atlassian.net` |
-| `JIRA_USERNAME` | JIRA username | `user@company.com` |
-| `ARTIFACTORY_URL` | Artifactory URL | `https://mycompany.jfrog.io/artifactory` |
 
 ### Running the Demo
 
@@ -305,6 +282,8 @@ Code Push → Service CI → Build + Evidence → Application Version (DEV)
     ↓
 Promote to QA → E2E Tests → Test Evidence → QA Validation
     ↓
+Promote to PreProd → No Applicable CVEs → Release Manager Approval (TBD)
+    ↓
 Release to PROD ← AppTrust Gating ← Evidence Validation ← All Gates Pass
     ↓
 ArgoCD Deployment → Production Environment
@@ -333,9 +312,9 @@ ArgoCD Deployment → Production Environment
 
 ### Running Individual Services
 
-#### Quote of Day Service
+#### BTCWallet Service
 ```bash
-cd quoteofday
+cd btcwallet
 mvn spring-boot:run
 # Service available at http://localhost:8001
 ```
@@ -348,9 +327,9 @@ python app.py
 # Service available at http://localhost:8002
 ```
 
-#### Quotopia UI
+#### BTCWallet UI
 ```bash
-cd quotopia-ui
+cd btcwallet-ui
 # Open index.html in browser or serve with any web server
 python -m http.server 8080
 # UI available at http://localhost:8080
@@ -384,9 +363,9 @@ The project includes ArgoCD integration for production deployments:
 
 For detailed information about each component, refer to the individual README files:
 
-- **[Quote of Day Service](quoteofday/README.md)** - Java Spring Boot service documentation
+- **[BTCWallet Service](btcwallet/README.md)** - Java Spring Boot service documentation
 - **[AI Translation Service](translate/README.md)** - Python FastAPI service documentation  
-- **[Quotopia UI](quotopia-ui/README.md)** - Static website documentation
+- **[BTCWallet UI](btcwallet-ui/README.md)** - Static website documentation
 - **[E2E Tests](e2e-tests/README.md)** - Cypress testing framework documentation
 - **[JIRA Evidence Helper](jira/README.md)** - JIRA integration and evidence creation
 

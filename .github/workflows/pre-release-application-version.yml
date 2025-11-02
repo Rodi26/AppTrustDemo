@@ -1,0 +1,93 @@
+name: Pre Release Application
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read           # for detecting the Github Actions environment
+  id-token: write         # for creating OIDC tokens for signing
+  packages: write         # for uploading attestations
+  contents: read          # read the contents permission
+  security-events: write  # for uploading code scanning
+
+jobs:
+  promote-application:
+    name: Pre Release Latest Application Version
+    runs-on: ubuntu-latest
+    env:
+      JF_URL: ${{ vars.JF_URL }}
+      JF_USER: ${{ vars.JF_USER }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      APP_ID: btcwalletapp
+      TARGET_STAGE: 'btcwallet-PreProd'
+      JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
+      JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
+      DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: 2.82.0
+          oidc-provider-name: btcwallet-gh
+          oidc-audience: btcwallet-gh
+        id: setup-cli
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+          # JF_USER: ${{ vars.JF_USER }}
+          # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+          
+      - name: Get latest application version
+        id: get_app_ver
+        run: |
+          # Use the API to get the latest version.
+          # We use limit=1 and order_by=created to get the most recent version.
+          API_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?order_by=created&limit=1"
+          
+          echo "Fetching latest application version from: $API_URL"
+          
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
+            "$API_URL")
+          
+          # Use jq to parse the JSON and extract the version.
+          # The API returns an array 'versions', so we get the first element.
+          LATEST_VER=$(echo "$RESPONSE" | jq -r '.versions[0].version')
+          
+          if [ "$LATEST_VER" == "null" ] || [ -z "$LATEST_VER" ]; then
+            echo "Error: Could not retrieve a valid application version."
+            exit 1
+          fi
+          
+          echo "Found latest application version: $LATEST_VER"
+          echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
+
+      - name: Promote application to ${{ env.TARGET_STAGE }}
+        id: promote_step
+        run: |
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          REQUEST_BODY="{\"target_stage\":\"$TARGET_STAGE\"}"
+          
+          PROMOTION_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/promote"
+          echo "Promoting application '$APP_ID' version $APP_VER to stage $TARGET_STAGE..."
+          
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$REQUEST_BODY" \
+            "$PROMOTION_URL")
+          
+          echo "Promotion request returned status code: $STATUS_CODE"
+          
+          # The API returns 200, 201, or 202 on success, depending on the promotion process.
+          if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -le 202 ]]; then
+            echo "Successfully promoted $APP_ID version $APP_VER to $TARGET_STAGE."
+          else
+            echo "Failed to promote application. HTTP status code: $STATUS_CODE"
+            # Run again to see output
+            curl -s -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$REQUEST_BODY" "$PROMOTION_URL"
+            exit 1
+          fi

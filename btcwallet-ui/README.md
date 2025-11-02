@@ -1,13 +1,13 @@
-# Quotopia - Inspire yourself THEN inspire the world
+# BTCWallet - Inspire yourself THEN inspire the world
 
-A beautiful, inspiring static web page that displays the quote of the day from your microservice API.
+A beautiful, inspiring static web page that displays the bitcoin wallets from your microservice API.
 
 ## Features
 
 - ✨ Beautiful, modern design with gradient backgrounds
 - 💡 Animated header with inspiration-themed illustrations
 - 📱 Fully responsive design for all devices
-- 🔄 Interactive quote card (click to refresh)
+- 🔄 Interactive wallet card (click to refresh)
 - 🌟 Smooth animations and transitions
 - 📅 Displays formatted date information
 
@@ -19,15 +19,15 @@ A beautiful, inspiring static web page that displays the quote of the day from y
 
 ## Setup
 
-1. **Start your quote microservice** on `http://localhost:8080`
+1. **Start your btcwallet microservice** on `http://localhost:8080`
 2. **Open `index.html`** in your web browser
-3. **Enjoy your daily inspiration!**
+3. **Enjoy your app!**
 
 ## API Requirements
 
-The web page expects your microservice to provide quotes at:
+The web page expects your microservice to provide API at:
 ```
-GET http://localhost:8080/api/quotes/today
+GET http://localhost:8080/api/btcwallet/today
 ```
 
 Expected response format:
@@ -40,18 +40,6 @@ Expected response format:
 ```
 
 ## Features
-
-### Design Elements
-- **Header**: Quotopia title with subtitle "Inspire yourself THEN inspire the world"
-- **Header Image**: Animated light bulb with sparkles representing inspiration
-- **Quote Card**: Clean, modern card displaying the quote, author, and date
-- **Footer**: Simple footer with branding
-
-### Interactivity
-- **Click to Refresh**: Click anywhere on the quote card to fetch a new quote
-- **Hover Effects**: Subtle animations on hover
-- **Loading States**: Beautiful loading animations when fetching quotes
-- **Error Handling**: Graceful error display if API is unavailable
 
 ### Responsive Design
 - **Mobile-friendly**: Optimized for phones and tablets
@@ -75,12 +63,12 @@ You can easily customize the design by modifying:
 
 ## Troubleshooting
 
-If the quote doesn't load:
+If the btcwallet doesn't load:
 1. Ensure your microservice is running on `http://localhost:8080`
-2. Check that the API endpoint `/api/quotes/today` is accessible
+2. Check that the API endpoint `/api/btcwallet/first` is accessible
 3. Verify the response format matches the expected JSON structure
 4. Check browser console for any error messages
 
 ## License
 
-This is a static web page created for the Quotopia service. Feel free to modify and use as needed.
+This is a static web page created for the BTCWallet service. Feel free to modify and use as needed.
