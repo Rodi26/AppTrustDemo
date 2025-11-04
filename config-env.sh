@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Set variables
-JF_URL="https://apptrustinfra.jfrog.io"
-JF_USERNAME="talet@jfrog.com"
-# read -p "Enter your JFrog username: " JF_USERNAME
+JF_URL="https://swampupsec.jfrog.io"
+read -p "Enter your JFrog username: " JF_USERNAME
 read -s -p "Enter your JFrog Access Token: " JF_PASSWORD
 echo
 
@@ -190,19 +189,105 @@ echo
 ## Automate Lifecycle edit to add stages
 
 # Create new application
-curl -X POST "${JF_URL}/apptrust/api/v1/applications" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer ${JF_PASSWORD}" \
-    -d '
-        {
-    "application_name": "BTC Wallet App",
-    "application_key": "btcwalletapp",
-    "project_key": "btcwallet",
-    "description": "This application contains the BTC Wallet services.",
-    "maturity_level": "production",
-    "criticality": "high",
-    "labels": {
-        "environment": "production",
-        "region": "us-east"
-    }
-    }'
+# curl -X POST "${JF_URL}/apptrust/api/v1/applications" \
+#     -H "Content-Type: application/json" \
+#     -H "Authorization: Bearer ${JF_PASSWORD}" \
+#     -d '
+#         {
+#     "application_name": "BTC Wallet App",
+#     "application_key": "btcwalletapp",
+#     "project_key": "btcwallet",
+#     "description": "This application contains the BTC Wallet services.",
+#     "maturity_level": "production",
+#     "criticality": "high",
+#     "labels": {
+#         "environment": "production",
+#         "region": "us-east"
+#     }
+#     }'
+
+# Create custom AppTrust rules
+# Cypress
+# curl -X POST "${JF_URL}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${JF_PASSWORD}" -H "Content-Type: application/json" -d '{
+#     "name": "Integration Testing (Cypress) Evidence Validation",
+#     "description": "This rule validates integration testing (Cypress) evidence exists.",
+#     "is_custom": true,
+#     "template_id": "1003",
+#     "parameters": [
+#       {
+#         "name": "predicateType",
+#         "value": "https://cypress.io/evidence/e2e/v1"
+#       }
+#     ]
+#   }'
+
+# JUnit
+# curl -X POST "${JF_URL}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${JF_PASSWORD}" -H "Content-Type: application/json" -d '{
+#     "name": "Unit Testing (JUnit) Evidence Validation",
+#     "description": "This rule validates unit testing (JUnit) evidence exists.",
+#     "is_custom": true,
+#     "template_id": "1003",
+#     "parameters": [
+#       {
+#         "name": "predicateType",
+#         "value": "https://jfrog.com/evidence/test-results/v1"
+#       }
+#     ]
+#   }'
+
+# JIRA
+# curl -X POST "${JF_URL}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${JF_PASSWORD}" -H "Content-Type: application/json" -d '{
+#     "name": "JIRA Evidence Validation",
+#     "description": "This rule validates existence of JIRA evidence.",
+#     "is_custom": true,
+#     "template_id": "1003",
+#     "parameters": [
+#       {
+#         "name": "predicateType",
+#         "value": "http://atlassian.com/jira/issues/v1"
+#       }
+#     ]
+#   }'
+
+# Create AppTrust Exit gates for Project stages
+# curl -X POST "${JF_URL}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${JF_PASSWORD}" -H "Content-Type: application/json" -d '{
+#     "name": "btcwallet-PreProd.Exit Gate Certification",
+#     "description": "Triggers a policy violation if the AppTrust gate certification evidence for btcwallet-PreProd.Exit is not attached to the evaluated resource.",
+#     "is_custom": true,
+#     "template_id": "1004",
+#     "parameters": [
+#       {
+#         "name": "predicateType",
+#         "value": "https://jfrog.com/evidence/apptrust/gate-certify/v1"
+#       },
+#       {
+#         "name": "stage",
+#         "value": "btcwallet-PreProd"
+#       },
+#       {
+#         "name": "gate",
+#         "value": "exit"
+#       }
+#     ]
+#   }'
+
+# curl -X POST "${JF_URL}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${JF_PASSWORD}" -H "Content-Type: application/json" -d '{
+#     "name": "btcwallet-QA.Exit Gate Certification",
+#     "description": "Triggers a policy violation if the AppTrust gate certification evidence for btcwallet-QA.Exit is not attached to the evaluated resource.",
+#     "is_custom": true,
+#     "template_id": "1004",
+#     "parameters": [
+#       {
+#         "name": "predicateType",
+#         "value": "https://jfrog.com/evidence/apptrust/gate-certify/v1"
+#       },
+#       {
+#         "name": "stage",
+#         "value": "btcwallet-QA"
+#       },
+#       {
+#         "name": "gate",
+#         "value": "exit"
+#       }
+#     ]
+#   }'
