@@ -78,9 +78,8 @@ jobs:
       with:
         # The 'oci://' prefix is required by JFrog to correctly parse the artifact type
         subject-name: oci://${{ env.DOCKER_REGISTRY }}/btcwallet-ui:${{ github.run_number }}
-        
-        # This links the attestation directly to the image digest from the build step
         subject-digest: ${{ steps.build-and-push.outputs.digest }}
+        push-to-registry: false
 
     - name: Test Docker image
       run: |
