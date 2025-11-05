@@ -28,6 +28,8 @@ jobs:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
+      SOURCE_BUILD_NAME: "btcwallet-ui"
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
     outputs:
       build_name: ${{ steps.publish_build.outputs.build_name }}
       build_number: ${{ steps.publish_build.outputs.build_number }}
@@ -47,7 +49,7 @@ jobs:
         JF_URL: ${{ vars.JF_URL }}
         # JF_USER: ${{ vars.JF_USER }}
         # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-        JF_PROJECT: "btcwallet"
+        JF_PROJECT: ${{ env.JF_PROJECT }}
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -62,13 +64,13 @@ jobs:
     - name: Build and Push Docker image
       id: build-and-push
       run: |
-        cd btcwallet-ui
+        cd ${{ env.SOURCE_BUILD_NAME }}
         # Build and push to JFrog Artifactory
         jf docker buildx build --platform linux/amd64,linux/arm64 \
-          --tag ${{ env.DOCKER_REGISTRY }}/btcwallet-ui:${{ github.run_number }} \
+          --tag ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }} \
           --metadata-file=build-metadata --output=type=image --push .
         jf rt build-docker-create ${{ env.PROJECT_DOCKER_DEV_REPO }}  \
-          --project btcwallet --image-file build-metadata --build-name btcwallet-ui --build-number ${{ github.run_number }} 
+          --project ${{ env.JF_PROJECT }} --image-file build-metadata --build-name ${{ env.SOURCE_BUILD_NAME }} --build-number ${{ github.run_number }}
         # Extract the image digest
         DIGEST=$(jq -r '.["containerimage.digest"]' build-metadata)
         echo "digest=$DIGEST" >> $GITHUB_OUTPUT
@@ -78,17 +80,17 @@ jobs:
       uses: actions/attest-build-provenance@v3
       with:
         # The 'oci://' prefix is required by JFrog to correctly parse the artifact type
-        subject-name: oci://${{ env.DOCKER_REGISTRY }}/btcwallet-ui:${{ github.run_number }}
+        subject-name: oci://${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         subject-digest: ${{ steps.build-and-push.outputs.digest }}
 
     - name: Test Docker image
       run: |
-        cd btcwallet-ui
+        cd ${{ env.SOURCE_BUILD_NAME }}
         # Pull the image for testing
-        jf docker pull ${{ env.DOCKER_REGISTRY }}/btcwallet-ui:${{ github.run_number }}
+        jf docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
 
         # Run container with better debugging
-        jf docker run -d --name test-ui-container -p 8080:80 ${{ env.DOCKER_REGISTRY }}/btcwallet-ui:${{ github.run_number }}
+        jf docker run -d --name test-ui-container -p 8080:80 ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         
         # Wait for container to start
         sleep 5
@@ -108,9 +110,9 @@ jobs:
     - name: Publish buildinfo
       id: publish_build
       run: |
-        jf rt build-add-git btcwallet-ui ${{ github.run_number }}
-        jf rt build-publish btcwallet-ui ${{ github.run_number }}
-        echo "build_name=btcwallet-ui" >> $GITHUB_OUTPUT
+        jf rt build-add-git ${{ env.SOURCE_BUILD_NAME }} ${{ github.run_number }}
+        jf rt build-publish ${{ env.SOURCE_BUILD_NAME }} ${{ github.run_number }}
+        echo "build_name=${{ env.SOURCE_BUILD_NAME }}" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
   create_jira_evidence:

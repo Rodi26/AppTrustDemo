@@ -45,6 +45,7 @@ jobs:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
 
     steps:
       - name: Setup jfrog cli
@@ -52,7 +53,7 @@ jobs:
         env:
           JF_URL: ${{ vars.ARTIFACTORY_URL }}
           # JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
-          JF_PROJECT: "btcwallet"
+          JF_PROJECT: "${{ env.JF_PROJECT }}"
         with:
           oidc-provider-name: btcwallet-gh
           oidc-audience: btcwallet-gh
@@ -75,7 +76,7 @@ jobs:
           echo "Fetching build info for ${{ env.BUILD_NAME }} ${{ env.BUILD_NUMBER }}..."
           
           # Fetch build info using JFrog CLI and extract VCS message
-          BUILD_INFO=$(jf rt curl -X GET "/api/build/${{ env.BUILD_NAME }}/${{ env.BUILD_NUMBER }}?project=btcwallet" -s)
+          BUILD_INFO=$(jf rt curl -X GET "/api/build/${{ env.BUILD_NAME }}/${{ env.BUILD_NUMBER }}?project=${{ env.JF_PROJECT }}" -s)
           VCS_MESSAGE=$(echo "$BUILD_INFO" | jq -r '.buildInfo.vcs[0].message // empty')
           
           if [ -z "$VCS_MESSAGE" ]; then
@@ -135,7 +136,7 @@ jobs:
           if [ -f ./jira/helper/transformed_jira_data.json ]; then
             jf evd create \
               --subject-repo-path="$SUBJECT_PATH" \
-              --project btcwallet \
+              --project ${{ env.JF_PROJECT }} \
               --predicate ./jira/helper/transformed_jira_data.json \
               --predicate-type http://atlassian.com/jira/issues/v1 \
               --markdown ./jira/helper/transformed_jira_data.md \

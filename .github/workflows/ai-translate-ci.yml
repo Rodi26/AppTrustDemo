@@ -27,6 +27,8 @@ jobs:
     env:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
+      SOURCE_BUILD_NAME: "ai-translate"
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -66,6 +68,8 @@ jobs:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
+      SOURCE_BUILD_NAME: "ai-translate"
     needs: test
     outputs: 
       build_name: ${{ steps.publish_build.outputs.build_name }}
@@ -85,8 +89,8 @@ jobs:
         JF_URL: ${{ vars.JF_URL }}
         # JF_USER: ${{ vars.JF_USER }}
         # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-        JF_PROJECT: "btcwallet"
-      
+        JF_PROJECT: ${{ env.JF_PROJECT }}
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
@@ -103,12 +107,12 @@ jobs:
         cd translate
         # Build single platform AMD64 image
         jf docker buildx build --platform linux/amd64 \
-          --cache-from type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache \
-          --cache-to type=registry,ref=${{ env.DOCKER_REGISTRY }}/ai-translate:cache,mode=max \
-          --tag ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }} \
+          --cache-from type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:cache \
+          --cache-to type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:cache,mode=max \
+          --tag ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }} \
           --metadata-file=build-metadata --output=type=image --push .
         jf rt build-docker-create ${{ env.PROJECT_DOCKER_DEV_REPO }}  \
-          --project btcwallet --image-file build-metadata --build-name ai-translate --build-number ${{ github.run_number }}
+          --project ${{ env.JF_PROJECT }} --image-file build-metadata --build-name ${{ env.SOURCE_BUILD_NAME }} --build-number ${{ github.run_number }}
         # Extract the image digest
         DIGEST=$(jq -r '.["containerimage.digest"]' build-metadata)
         echo "digest=$DIGEST" >> $GITHUB_OUTPUT
@@ -118,14 +122,14 @@ jobs:
       uses: actions/attest-build-provenance@v3
       with:
         # The 'oci://' prefix is required by JFrog to correctly parse the artifact type
-        subject-name: oci://${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}
+        subject-name: oci://${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         subject-digest: ${{ steps.build-and-push.outputs.digest }}
 
     - name: Verify Docker image
       run: |
         echo "🔍 Verifying Docker image..."
-        docker pull ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}
-        docker images ${{ env.DOCKER_REGISTRY }}/ai-translate:${{ github.run_number }}
+        docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
+        docker images ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
 
     # - name: Run Grype scan
     #   id: grype
@@ -146,9 +150,9 @@ jobs:
     - name: Publish buildinfo
       id: publish_build
       run: |
-        jf rt build-add-git --project btcwallet ai-translate ${{ github.run_number }}
-        jf rt build-publish --project btcwallet ai-translate ${{ github.run_number }} 
-        echo "build_name=ai-translate" >> $GITHUB_OUTPUT
+        jf rt build-add-git --project ${{ env.JF_PROJECT }} ${{ env.SOURCE_BUILD_NAME }} ${{ github.run_number }}
+        jf rt build-publish --project ${{ env.JF_PROJECT }} ${{ env.SOURCE_BUILD_NAME }} ${{ github.run_number }}
+        echo "build_name=${{ env.SOURCE_BUILD_NAME }}" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
   create_jira_evidence:

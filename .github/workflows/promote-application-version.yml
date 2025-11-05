@@ -19,11 +19,15 @@ jobs:
       JF_URL: ${{ vars.JF_URL }}
       # JF_USER: ${{ vars.JF_USER }}
       # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      APP_ID: btcwalletapp
-      TARGET_STAGE: 'btcwallet-QA'
+      APP_ID: ${{ vars.APPLICATION_NAME }}
+      TARGET_STAGE: ${{ vars.QA_STAGE }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
+      SOURCE_BUILD_NAME_BACKEND: "btcwallet"
+      SOURCE_BUILD_NAME_FRONTEND: "btcwallet-ui"
+      SOURCE_BUILD_NAME_SERVICE: "ai-translate"
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
 
     steps:
       - name: Checkout code
@@ -130,12 +134,12 @@ jobs:
             name=$(echo "$build_info" | jq -r '.name')
             number=$(echo "$build_info" | jq -r '.number')
             echo "Found build with name: $name and number: $number"
-            [ "$name" == "btcwallet" ] && BTCWALLET_NUM="$number"
-            [ "$name" == "btcwallet-ui" ] && UI_NUM="$number"
+            [ "$name" == "${{ env.SOURCE_BUILD_NAME_BACKEND }}" ] && BTCWALLET_NUM="$number"
+            [ "$name" == "${{ env.SOURCE_BUILD_NAME_FRONTEND }}" ] && UI_NUM="$number"
           done < <(cat result.json | jq -c '.sources[] | {name: .build.name, number: .build.number}')
 
           if [ "" == "$BTCWALLET_NUM" -o "" == "$UI_NUM" ]; then
-            echo "btcwallet or btcwallet-ui version (or both) could not be found."
+            echo "${{ env.SOURCE_BUILD_NAME_BACKEND }} or ${{ env.SOURCE_BUILD_NAME_FRONTEND }} version (or both) could not be found."
             echo "BTCWALLET_NUM=$BTCWALLET_NUM UI_NUM=$UI_NUM"
             exit 1
           fi
@@ -145,20 +149,20 @@ jobs:
           echo "ui_version=$UI_NUM" >> $GITHUB_OUTPUT
           
           echo "📋 Image Summary:"
-          echo "- BTCWallet: ${{ env.DOCKER_REGISTRY }}/btcwallet:$BTCWALLET_NUM"
-          echo "- BTCWallet UI: ${{ env.DOCKER_REGISTRY }}/btcwallet-ui:$UI_NUM"
+          echo "- BTCWallet: ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:$BTCWALLET_NUM"
+          echo "- BTCWallet UI: ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:$UI_NUM"
 
       - name: Pull Docker images
         run: |
           echo "📥 Pulling Docker images..."
           
           # Pull btcwallet image
-          echo "📦 Pulling btcwallet image..."
-          docker pull ${{ env.DOCKER_REGISTRY }}/btcwallet:${{ steps.get-images.outputs.btcwallet_version }}
+          echo "📦 Pulling ${{ env.SOURCE_BUILD_NAME_BACKEND }} image..."
+          docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:${{ steps.get-images.outputs.btcwallet_version }}
 
           # Pull btcwallet-ui image
-          echo "📦 Pulling btcwallet-ui image..."
-          docker pull ${{ env.DOCKER_REGISTRY }}/btcwallet-ui:${{ steps.get-images.outputs.ui_version }}
+          echo "📦 Pulling ${{ env.SOURCE_BUILD_NAME_FRONTEND }} image..."
+          docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:${{ steps.get-images.outputs.ui_version }}
           
           echo "✅ All images pulled successfully"
 
@@ -167,32 +171,32 @@ jobs:
           echo "🚀 Starting Docker services..."
           
           # Start btcwallet service
-          echo "🔧 Starting btcwallet service..."
-          docker run -d --name btcwallet-service \
+          echo "🔧 Starting ${{ env.SOURCE_BUILD_NAME_BACKEND }} service..."
+          docker run -d --name ${{ env.SOURCE_BUILD_NAME_BACKEND }}-service \
             -p 8001:8001 \
-            ${{ env.DOCKER_REGISTRY }}/btcwallet:${{ steps.get-images.outputs.btcwallet_version }}
+            ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:${{ steps.get-images.outputs.btcwallet_version }}
 
           # Start btcwallet-ui service
-          echo "🔧 Starting btcwallet-ui service..."
-          docker run -d --name btcwallet-ui-service \
+          echo "🔧 Starting ${{ env.SOURCE_BUILD_NAME_FRONTEND }} service..."
+          docker run -d --name ${{ env.SOURCE_BUILD_NAME_FRONTEND }}-service \
             -p 8081:80 \
             --add-host host.docker.internal:host-gateway \
-            ${{ env.DOCKER_REGISTRY }}/btcwallet-ui:${{ steps.get-images.outputs.ui_version }}
-          
+            ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:${{ steps.get-images.outputs.ui_version }}
+
           # Wait for services to be ready
           echo "⏳ Waiting for services to be ready..."
           sleep 10
           
           # Check if services are running
-          if ! docker ps | grep -q btcwallet-service; then
-            echo "❌ BTCWallet service failed to start"
-            docker logs btcwallet-service
+          if ! docker ps | grep -q ${{ env.SOURCE_BUILD_NAME_BACKEND }}-service; then
+            echo "❌ ${{ env.SOURCE_BUILD_NAME_BACKEND }} service failed to start"
+            docker logs ${{ env.SOURCE_BUILD_NAME_BACKEND }}-service
             exit 1
           fi
           
-          if ! docker ps | grep -q btcwallet-ui-service; then
-            echo "❌ BTCWallet UI service failed to start"
-            docker logs btcwallet-ui-service
+          if ! docker ps | grep -q ${{ env.SOURCE_BUILD_NAME_FRONTEND }}-service; then
+            echo "❌ ${{ env.SOURCE_BUILD_NAME_FRONTEND }} service failed to start"
+            docker logs ${{ env.SOURCE_BUILD_NAME_FRONTEND }}-service
             exit 1
           fi
           
@@ -254,8 +258,8 @@ jobs:
           cd e2e-tests
 
           jf evd create \
-              --subject-repo-path="btcwallet-application-versions/btcwalletapp/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd" \
-              --project btcwallet \
+              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd" \
+              --project ${{ env.JF_PROJECT }} \
               --predicate test-report.json \
               --predicate-type https://cypress.io/evidence/e2e/v1 \
               --markdown test-report.md \

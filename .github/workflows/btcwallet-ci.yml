@@ -30,6 +30,8 @@ jobs:
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SOURCE_BUILD_NAME: "btcwallet"
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
     outputs:
       build_name: ${{ steps.publish_build.outputs.build_name }}
       build_number: ${{ steps.publish_build.outputs.build_number }}
@@ -71,7 +73,7 @@ jobs:
         JF_URL: ${{ vars.JF_URL }}
         # JF_USER: ${{ vars.JF_USER }}
         # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-        JF_PROJECT: "btcwallet"
+        JF_PROJECT: ${{ env.JF_PROJECT }}
         
 
     - name: Setup Maven
@@ -84,13 +86,13 @@ jobs:
       # env:
       #   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       run: |
-        cd btcwallet
+        cd ${{ env.SOURCE_BUILD_NAME }}
         # Replace SNAPSHOT with GitHub run number for versioning
         sed -i "s/-SNAPSHOT/-${{ github.run_number }}/g" pom.xml
         echo "📦 Updated version to 1.0.0-${{ github.run_number }}"
         
         # Build and deploy to Artifactory
-        jf mvn deploy -Dscan=true -q --batch-mode --no-transfer-progress --project btcwallet --build-name btcwallet --build-number ${{ github.run_number }}
+        jf mvn deploy -Dscan=true -q --batch-mode --no-transfer-progress --project ${{ env.JF_PROJECT }} --build-name ${{ env.SOURCE_BUILD_NAME }} --build-number ${{ github.run_number }}
 
     # - name: Get artifact SHA256
     #   id: get_sha256
@@ -132,7 +134,7 @@ jobs:
 
     - name: Compile java for Sonar scan
       run: |
-        cd btcwallet
+        cd ${{ env.SOURCE_BUILD_NAME }}
         mvn test-compile
       
     - name: Sonar scan
@@ -141,7 +143,7 @@ jobs:
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       with:
-        projectBaseDir: btcwallet/
+        projectBaseDir: ${{ env.SOURCE_BUILD_NAME }}/
         args: >
           -Dsonar.organization=my-evidence-test-org1
           -Dsonar.projectKey=my-evidence-test-org1_evidence-integration
@@ -150,7 +152,7 @@ jobs:
 
     - name: Create Test Evidence JSON
       run: |
-        cd btcwallet
+        cd ${{ env.SOURCE_BUILD_NAME }}
         mkdir -p evidence
         
         # Run the conversion script to create evidence file with markdown report
@@ -169,13 +171,13 @@ jobs:
     - name: Build and Push Docker image
       id: build-and-push
       run: |
-        cd btcwallet
+        cd ${{ env.SOURCE_BUILD_NAME }}
         # Build and push to JFrog Artifactory
         jf docker buildx build --platform linux/amd64,linux/arm64 \
-          --tag ${{ env.DOCKER_REGISTRY }}/btcwallet:${{ github.run_number }} \
+          --tag ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }} \
           --metadata-file=build-metadata --output=type=image --push .
         jf rt build-docker-create ${{ env.PROJECT_DOCKER_DEV_REPO }}  \
-          --project btcwallet --image-file build-metadata --build-name btcwallet --build-number ${{ github.run_number }}
+          --project ${{ env.JF_PROJECT }} --image-file build-metadata --build-name ${{ env.SOURCE_BUILD_NAME }} --build-number ${{ github.run_number }}
         # Extract the image digest
         DIGEST=$(jq -r '.["containerimage.digest"]' build-metadata)
         echo "digest=$DIGEST" >> $GITHUB_OUTPUT
@@ -185,7 +187,7 @@ jobs:
       uses: actions/attest-build-provenance@v3
       with:
         # The 'oci://' prefix is required by JFrog to correctly parse the artifact type
-        subject-name: oci://${{ env.DOCKER_REGISTRY }}/btcwallet:${{ github.run_number }}
+        subject-name: oci://${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         subject-digest: ${{ steps.build-and-push.outputs.digest }}
 
     - name: Evidence on docker image
@@ -193,20 +195,20 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: |
         echo "🔍 Creating evidence on docker image..."
-        cd btcwallet
-        jf evd create --subject-repo-path ${{ env.PROJECT_DOCKER_DEV_REPO }}/btcwallet/${{ github.run_number }}/list.manifest.json  \
-          --project btcwallet --predicate ./test-evidence.json --predicate-type https://jfrog.com/evidence/test-results/v1 \
+        cd ${{ env.SOURCE_BUILD_NAME }}
+        jf evd create --subject-repo-path ${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}/${{ github.run_number }}/list.manifest.json  \
+          --project ${{ env.JF_PROJECT }} --predicate ./test-evidence.json --predicate-type https://jfrog.com/evidence/test-results/v1 \
           --markdown ./test-evidence.md --provider-id junit
-        jf evd create --package-name btcwallet --package-version ${{ github.run_number }} --package-repo-name ${{ env.PROJECT_DOCKER_DEV_REPO }} --project btcwallet --integration sonar
-      
+        jf evd create --package-name ${{ env.SOURCE_BUILD_NAME }} --package-version ${{ github.run_number }} --package-repo-name ${{ env.PROJECT_DOCKER_DEV_REPO }} --project ${{ env.JF_PROJECT }} --integration sonar
+
     - name: Test Docker image
       run: |
-        cd btcwallet
+        cd ${{ env.SOURCE_BUILD_NAME }}
         # Pull the image for testing
-        jf docker pull ${{ env.DOCKER_REGISTRY }}/btcwallet:${{ github.run_number }}
+        jf docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
 
         # Run container with better debugging
-        jf docker run -d --name test-container -p 8001:8001 ${{ env.DOCKER_REGISTRY }}/btcwallet:${{ github.run_number }}
+        jf docker run -d --name test-container -p 8001:8001 ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         
         # Wait for container to start
         sleep 5
@@ -220,9 +222,9 @@ jobs:
     - name: Publish buildinfo
       id: publish_build
       run: |
-        jf rt build-add-git btcwallet ${{ github.run_number }}
-        jf rt build-publish btcwallet ${{ github.run_number }}
-        echo "build_name=btcwallet" >> $GITHUB_OUTPUT
+        jf rt build-add-git ${{ env.SOURCE_BUILD_NAME }} ${{ github.run_number }}
+        jf rt build-publish ${{ env.SOURCE_BUILD_NAME }} ${{ github.run_number }}
+        echo "build_name=${{ env.SOURCE_BUILD_NAME }}" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
   create_jira_evidence:

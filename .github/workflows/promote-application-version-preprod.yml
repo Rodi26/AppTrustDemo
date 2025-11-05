@@ -19,11 +19,12 @@ jobs:
       JF_URL: ${{ vars.JF_URL }}
       JF_USER: ${{ vars.JF_USER }}
       JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      APP_ID: btcwalletapp
-      TARGET_STAGE: 'btcwallet-PreProd'
+      APP_ID: ${{ vars.APPLICATION_NAME }}
+      TARGET_STAGE: ${{ vars.PREPROD_STAGE }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
 
     steps:
       - name: Checkout code
@@ -99,8 +100,8 @@ jobs:
           cd snow
 
           jf evd create \
-              --subject-repo-path="btcwallet-application-versions/btcwalletapp/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd" \
-              --project btcwallet \
+              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd" \
+              --project ${{ env.JF_PROJECT }} \
               --predicate approval.json \
               --predicate-type https://servicenow.com/approval/v1 \
               --markdown approval.md \

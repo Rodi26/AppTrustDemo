@@ -19,9 +19,13 @@ jobs:
       JF_URL: ${{ vars.JF_URL }}
       # JF_USER: ${{ vars.JF_USER }}
       # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      APP_ID: btcwalletapp
+      APP_ID: ${{ vars.APPLICATION_NAME }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
+      JF_PROJECT: ${{ vars.JF_PROJECT }}
+      SOURCE_BUILD_NAME_BACKEND: "btcwallet"
+      SOURCE_BUILD_NAME_FRONTEND: "btcwallet-ui"
+      SOURCE_BUILD_NAME_SERVICE: "ai-translate"
 
     steps:
       - name: Setup JFrog CLI
@@ -35,17 +39,17 @@ jobs:
           JF_URL: ${{ vars.JF_URL }}
           # JF_USER: ${{ vars.JF_USER }}
           # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-          JF_PROJECT: "btcwallet"
+          JF_PROJECT: ${{ env.JF_PROJECT }}
 
       - name: Get latest services build numbers
         id: get-latest-builds
         run: |
           set +e
           getBuildNumber() {
-            echo "Requeseting build ${{ vars.JF_URL }}/artifactory/api/build/$1?project=btcwallet" >&2
+            echo "Requeseting build ${{ vars.JF_URL }}/artifactory/api/build/$1?project=${{ env.JF_PROJECT }}" >&2
             local RESPONSE=$(curl -s -X GET \
                                 -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
-                                "${{ vars.JF_URL }}/artifactory/api/build/$1?project=btcwallet")
+                                "${{ vars.JF_URL }}/artifactory/api/build/$1?project=${{ env.JF_PROJECT }}")
             local LATEST_BUILD_NUMBER=$(echo "$RESPONSE" | \
                                 jq -r '.buildsNumbers | sort_by(.started) | reverse | .[0].uri | ltrimstr("/")')
             if [ "" == "$LATEST_BUILD_NUMBER" ]; then 
@@ -56,23 +60,23 @@ jobs:
           }
 
           # Fetch build information from Artifactory API
-          LATEST_BTCWALLET_BUILD_NUMBER=$(getBuildNumber btcwallet)
+          LATEST_BTCWALLET_BUILD_NUMBER=$(getBuildNumber ${{ env.SOURCE_BUILD_NAME_BACKEND }})
           [ $? -ne 0 ] && echo "$LATEST_BTCWALLET_BUILD_NUMBER" && exit 1
 
           echo "latest_btcwallet_build_number=$LATEST_BTCWALLET_BUILD_NUMBER" >> $GITHUB_OUTPUT
-          echo "Found latest btcwallet build number: $LATEST_BTCWALLET_BUILD_NUMBER"
+          echo "Found latest ${{ env.SOURCE_BUILD_NAME_BACKEND }} build number: $LATEST_BTCWALLET_BUILD_NUMBER"
 
-          LATEST_BTCWALLET_UI_BUILD_NUMBER=$(getBuildNumber btcwallet-ui)
+          LATEST_BTCWALLET_UI_BUILD_NUMBER=$(getBuildNumber ${{ env.SOURCE_BUILD_NAME_FRONTEND }})
           [ $? -ne 0 ] && echo "$LATEST_BTCWALLET_UI_BUILD_NUMBER" && exit 1
 
           echo "latest_btcwallet_ui_build_number=$LATEST_BTCWALLET_UI_BUILD_NUMBER" >> $GITHUB_OUTPUT
-          echo "Found latest btcwallet-ui build number: $LATEST_BTCWALLET_UI_BUILD_NUMBER"
+          echo "Found latest ${{ env.SOURCE_BUILD_NAME_FRONTEND }} build number: $LATEST_BTCWALLET_UI_BUILD_NUMBER"
 
-          LATEST_AI_TRANSLATE_BUILD_NUMBER=$(getBuildNumber ai-translate)
+          LATEST_AI_TRANSLATE_BUILD_NUMBER=$(getBuildNumber ${{ env.SOURCE_BUILD_NAME_SERVICE }})
           [ $? -ne 0 ] && echo "$LATEST_AI_TRANSLATE_BUILD_NUMBER" && exit 1
           
           echo "latest_ai_translate_build_number=$LATEST_AI_TRANSLATE_BUILD_NUMBER" >> $GITHUB_OUTPUT
-          echo "Found latest ai-translate build number: $LATEST_AI_TRANSLATE_BUILD_NUMBER"
+          echo "Found latest ${{ env.SOURCE_BUILD_NAME_SERVICE }} build number: $LATEST_AI_TRANSLATE_BUILD_NUMBER"
 
       - name: Get latest application version
         id: get_app_ver
@@ -136,9 +140,9 @@ jobs:
           echo "NEXT_VER=$NEXT_VER"
   
           REQUEST_BODY="{\"version\": \"$NEXT_VER\", \"sources\": {\"builds\": [\
-          {\"name\":\"btcwallet\", \"number\":\"$BTCWALLET_BUILD_NUMBER\", \"repository_key\":\"btcwallet-build-info\", \"include_dependencies\":false},\
-          {\"name\":\"btcwallet-ui\", \"number\":\"$BTCWALLET_UI_BUILD_NUMBER\", \"repository_key\":\"btcwallet-build-info\", \"include_dependencies\":false},\
-          {\"name\":\"ai-translate\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"repository_key\":\"btcwallet-build-info\", \"include_dependencies\":false}\
+          {\"name\":\"${{ env.SOURCE_BUILD_NAME_BACKEND }}\", \"number\":\"$BTCWALLET_BUILD_NUMBER\", \"repository_key\":\"${{ env.JF_PROJECT }}-build-info\", \"include_dependencies\":false},\
+          {\"name\":\"${{ env.SOURCE_BUILD_NAME_FRONTEND }}\", \"number\":\"$BTCWALLET_UI_BUILD_NUMBER\", \"repository_key\":\"${{ env.JF_PROJECT }}-build-info\", \"include_dependencies\":false},\
+          {\"name\":\"${{ env.SOURCE_BUILD_NAME_SERVICE }}\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"repository_key\":\"${{ env.JF_PROJECT }}-build-info\", \"include_dependencies\":false}\
           ]}}"
           echo "REQUEST_BODY=$REQUEST_BODY"
 
