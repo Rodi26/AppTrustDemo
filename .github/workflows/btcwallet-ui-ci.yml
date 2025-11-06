@@ -30,6 +30,7 @@ jobs:
       PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
       SOURCE_BUILD_NAME: "btcwallet-ui"
       JF_PROJECT: ${{ vars.JF_PROJECT }}
+      DOCKER_REGISTRY_PREFIX: ${{ vars.DOCKER_REGISTRY_PREFIX }}
     outputs:
       build_name: ${{ steps.publish_build.outputs.build_name }}
       build_number: ${{ steps.publish_build.outputs.build_number }}
