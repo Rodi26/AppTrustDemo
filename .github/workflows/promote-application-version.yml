@@ -23,11 +23,13 @@ jobs:
       TARGET_STAGE: ${{ vars.QA_STAGE }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
-      DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
+      # DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
       SOURCE_BUILD_NAME_BACKEND: "btcwallet"
       SOURCE_BUILD_NAME_FRONTEND: "btcwallet-ui"
       SOURCE_BUILD_NAME_SERVICE: "ai-translate"
       JF_PROJECT: ${{ vars.JF_PROJECT }}
+      DOCKER_REGISTRY_PREFIX: ${{ vars.DOCKER_REGISTRY_PREFIX }}
+      PROJECT_DOCKER_QA_REPO: ${{ vars.PROJECT_DOCKER_QA_REPO }}
 
     steps:
       - name: Checkout code
@@ -107,8 +109,8 @@ jobs:
       - name: Login to Docker Registry
         run: |
           echo "🔐 Logging into JFrog Artifactory Docker registry..."
-          echo "Registry: ${{ env.DOCKER_REGISTRY }}"
-          echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY }}
+          echo "Registry: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}"
+          echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}
           echo "✅ Successfully logged into Docker registry"
 
       - name: Get latest Docker images from Artifactory for QA environment
@@ -149,8 +151,8 @@ jobs:
           echo "ui_version=$UI_NUM" >> $GITHUB_OUTPUT
           
           echo "📋 Image Summary:"
-          echo "- BTCWallet: ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:$BTCWALLET_NUM"
-          echo "- BTCWallet UI: ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:$UI_NUM"
+          echo "- BTCWallet: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:$BTCWALLET_NUM"
+          echo "- BTCWallet UI: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:$UI_NUM"
 
       - name: Pull Docker images
         run: |
@@ -158,12 +160,12 @@ jobs:
           
           # Pull btcwallet image
           echo "📦 Pulling ${{ env.SOURCE_BUILD_NAME_BACKEND }} image..."
-          docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:${{ steps.get-images.outputs.btcwallet_version }}
+          docker pull ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:${{ steps.get-images.outputs.btcwallet_version }}
 
           # Pull btcwallet-ui image
           echo "📦 Pulling ${{ env.SOURCE_BUILD_NAME_FRONTEND }} image..."
-          docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:${{ steps.get-images.outputs.ui_version }}
-          
+          docker pull ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:${{ steps.get-images.outputs.ui_version }}
+
           echo "✅ All images pulled successfully"
 
       - name: Start Docker services
@@ -174,14 +176,14 @@ jobs:
           echo "🔧 Starting ${{ env.SOURCE_BUILD_NAME_BACKEND }} service..."
           docker run -d --name ${{ env.SOURCE_BUILD_NAME_BACKEND }}-service \
             -p 8001:8001 \
-            ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:${{ steps.get-images.outputs.btcwallet_version }}
+            ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}/${{ env.SOURCE_BUILD_NAME_BACKEND }}:${{ steps.get-images.outputs.btcwallet_version }}
 
           # Start btcwallet-ui service
           echo "🔧 Starting ${{ env.SOURCE_BUILD_NAME_FRONTEND }} service..."
           docker run -d --name ${{ env.SOURCE_BUILD_NAME_FRONTEND }}-service \
             -p 8081:80 \
             --add-host host.docker.internal:host-gateway \
-            ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:${{ steps.get-images.outputs.ui_version }}
+            ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}/${{ env.SOURCE_BUILD_NAME_FRONTEND }}:${{ steps.get-images.outputs.ui_version }}
 
           # Wait for services to be ready
           echo "⏳ Waiting for services to be ready..."

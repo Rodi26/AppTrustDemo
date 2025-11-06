@@ -9,8 +9,8 @@ on:
       - '.github/workflows/ai-translate-ci.yml'
   workflow_dispatch:
 
-env:
-  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
+# env:
+#   DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
 
 permissions:
   actions: read           # for detecting the Github Actions environment
@@ -29,6 +29,8 @@ jobs:
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       JF_PROJECT: ${{ vars.JF_PROJECT }}
       SOURCE_BUILD_NAME: "ai-translate"
+      DOCKER_REGISTRY_PREFIX: ${{ vars.DOCKER_REGISTRY_PREFIX }}
+      
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -70,6 +72,8 @@ jobs:
       PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
       JF_PROJECT: ${{ vars.JF_PROJECT }}
       SOURCE_BUILD_NAME: "ai-translate"
+      DOCKER_REGISTRY_PREFIX: ${{ vars.DOCKER_REGISTRY_PREFIX }}
+
     needs: test
     outputs: 
       build_name: ${{ steps.publish_build.outputs.build_name }}
@@ -97,9 +101,9 @@ jobs:
     - name: Login to Docker Registry
       run: |
         echo "🔐 Logging into JFrog Artifactory Docker registry..."
-        echo "Registry: ${{ env.DOCKER_REGISTRY }}"
-        echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY }}
-        echo "✅ Successfully logged into Docker registry"
+        echo "Registry: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}"
+        echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}
+        echo "✅ Successfully logged into Docker registry"$
       
     - name: Build and Push Docker image
       id: build-and-push
@@ -107,9 +111,9 @@ jobs:
         cd translate
         # Build single platform AMD64 image
         jf docker buildx build --platform linux/amd64 \
-          --cache-from type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:cache \
-          --cache-to type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:cache,mode=max \
-          --tag ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }} \
+          --cache-from type=registry,ref=${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:cache \
+          --cache-to type=registry,ref=${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:cache,mode=max \
+          --tag ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }} \
           --metadata-file=build-metadata --output=type=image --push .
         jf rt build-docker-create ${{ env.PROJECT_DOCKER_DEV_REPO }}  \
           --project ${{ env.JF_PROJECT }} --image-file build-metadata --build-name ${{ env.SOURCE_BUILD_NAME }} --build-number ${{ github.run_number }}
@@ -122,14 +126,14 @@ jobs:
       uses: actions/attest-build-provenance@v3
       with:
         # The 'oci://' prefix is required by JFrog to correctly parse the artifact type
-        subject-name: oci://${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
+        subject-name: oci://${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         subject-digest: ${{ steps.build-and-push.outputs.digest }}
 
     - name: Verify Docker image
       run: |
         echo "🔍 Verifying Docker image..."
-        docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
-        docker images ${{ env.DOCKER_REGISTRY }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
+        docker pull ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
+        docker images ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
 
     # - name: Run Grype scan
     #   id: grype

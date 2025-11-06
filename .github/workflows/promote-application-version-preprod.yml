@@ -23,7 +23,7 @@ jobs:
       TARGET_STAGE: ${{ vars.PREPROD_STAGE }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
-      DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
+      # DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
       JF_PROJECT: ${{ vars.JF_PROJECT }}
 
     steps:
