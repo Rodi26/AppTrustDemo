@@ -2,10 +2,10 @@
 class BTCWalletApp {
     constructor() {
         // Use localhost when running locally, host.docker.internal when running in Docker
-        if (window.location.hostname === '') {
+        if (window.location.port === '') {
             this.baseUrl = 'http://localhost:8001/api/btcwallet';
         } else {
-            this.baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:8001/api/btcwallet' : 'http://host.docker.internal:8001/api/btcwallet';
+            this.baseUrl = 'http://btcwallet-service:8001/api/btcwallet';
         }
         // this.baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:8001/api/btcwallet' : 'http://host.docker.internal:8001/api/btcwallet';
         this.walletAddressElement = document.getElementById('walletAddress');
