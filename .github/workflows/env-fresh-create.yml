@@ -70,6 +70,10 @@ jobs:
 
             echo "Creating Docker Repositories ..."
             # Docker local repos
+            echo "curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '"
             curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
                 -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
