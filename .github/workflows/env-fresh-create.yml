@@ -1,0 +1,328 @@
+# .github/workflows/env-fresh-create.yml
+name: Environment Fresh Create
+on:
+    workflow_dispatch:
+        inputs:
+            jf_url:
+                description: "JFrog Platform URL"
+                required: true
+                type: string
+            jf_access_token:
+                description: "JFrog Platform Access Token (Admin)"
+                required: true
+                type: string
+
+permissions:
+  actions: read           # for detecting the Github Actions environment
+  id-token: write         # for creating OIDC tokens for signing
+  packages: write         # for uploading attestations
+  contents: read          # read the contents permission
+  security-events: write  # for uploading code scanning
+
+jobs:
+  create-environment-resources:
+    name: Create Environment Resources
+    runs-on: ubuntu-latest
+    env:
+        JF_URL: ${{ inputs.jf_url }}
+        JF_ACCESS_TOKEN: ${{ inputs.jf_access_token }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Project, Stages & Repos
+        run: |
+            echo "Creating Project ..."
+            curl -X POST "${{ env.JF_URL }}/access/api/v1/projects" \
+                    -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                    -H "Content-Type: application/json" \
+                    -d '{
+                "display_name": "BTC Wallet",
+                "description": "The BTC Wallet Project",
+                "project_key": "btcwallet"
+                }'
+            echo "Project created successfully."
+
+            echo "Creating Stages ..."
+            curl -X POST "${{ env.JF_URL }}/access/api/v2/stages/" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{
+            "name": "btcwallet-QA",
+            "scope": "project",
+            "project_key": "btcwallet",
+            "category": "promote",
+            "repositories": []
+            }'
+
+            curl -X POST "${{ env.JF_URL }}/access/api/v2/stages/" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{
+            "name": "btcwallet-PreProd",
+            "scope": "project",
+            "project_key": "btcwallet",
+            "category": "promote",
+            "repositories": []
+            }'
+            echo "Stages created successfully."
+
+            echo "Creating Docker Repositories ..."
+            # Docker local repos
+            curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '
+                [
+                {
+                    "key": "btcwallet-dev-docker-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["DEV"],
+                    "packageType": "docker",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                },
+                    {
+                    "key": "btcwallet-qa-docker-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["btcwallet-QA"],
+                    "packageType": "docker",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                },
+                {
+                    "key": "btcwallet-preprod-docker-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["btcwallet-PreProd"],
+                    "packageType": "docker",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                },
+                {
+                    "key": "btcwallet-prod-docker-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["PROD"],
+                    "packageType": "docker",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                }
+                ]'
+
+            # Docker remote repo & virtual repo
+            curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '
+                [
+                {
+                    "key": "btcwallet-dev-docker-remote",
+                    "projectKey": "btcwallet",
+                    "environments": ["DEV"],
+                    "packageType": "docker",
+                    "url": "https://registry-1.docker.io/",
+                    "xrayIndex": true,
+                    "rclass": "remote"
+                }
+                ]'
+
+            curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '
+                [
+                    {
+                    "key": "btcwallet-dev-docker-virtual",
+                    "projectKey": "btcwallet",
+                    "environments": ["DEV"],
+                    "repositories": ["btcwallet-dev-docker-local", "btcwallet-dev-docker-remote"],
+                    "packageType": "docker",
+                    "rclass": "virtual"
+                }
+                ]'
+            echo "Docker Repositories created successfully."
+
+            echo "Maven Repositories creation ..."
+            # Maven local repos
+            curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '
+                [
+                {
+                    "key": "btcwallet-dev-maven-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["DEV"],
+                    "packageType": "maven",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                },
+                    {
+                    "key": "btcwallet-qa-maven-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["btcwallet-QA"],
+                    "packageType": "maven",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                },
+                {
+                    "key": "btcwallet-preprod-maven-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["btcwallet-PreProd"],
+                    "packageType": "maven",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                },
+                {
+                    "key": "btcwallet-prod-maven-local",
+                    "projectKey": "btcwallet",
+                    "environments": ["PROD"],
+                    "packageType": "maven",
+                    "xrayIndex": true,
+                    "rclass": "local"
+                }
+                ]'
+
+            # Maven remote & virtual repos
+            curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '
+                [
+                {
+                    "key": "btcwallet-dev-maven-remote",
+                    "projectKey": "btcwallet",
+                    "environments": ["DEV"],
+                    "packageType": "maven",
+                    "url": "https://repo.maven.apache.org/maven2/",
+                    "xrayIndex": true,
+                    "rclass": "remote"
+                }
+                ]'
+
+            curl -l -X PUT "${{ vars.JF_URL }}/artifactory/api/v2/repositories/batch" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '
+                [
+                    {
+                    "key": "btcwallet-dev-maven-virtual",
+                    "projectKey": "btcwallet",
+                    "environments": ["DEV"],
+                    "repositories": ["btcwallet-dev-maven-local", "btcwallet-dev-maven-remote"],
+                    "packageType": "maven",
+                    "rclass": "virtual"
+                }
+                ]'
+            echo "Maven Repositories created successfully."
+
+      - name: Create AppTrust resources
+        run: |
+            echo "Creating Application ..."
+            curl -X POST "${{ vars.JF_URL }}/apptrust/api/v1/applications" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" \
+                -d '
+                    {
+                "application_name": "BTC Wallet App",
+                "application_key": "btcwalletapp",
+                "project_key": "btcwallet",
+                "description": "This application contains the BTC Wallet services.",
+                "maturity_level": "production",
+                "criticality": "high",
+                "labels": {
+                    "environment": "production",
+                    "region": "us-east"
+                }
+                }'
+            echo "Application created successfully."
+
+            echo "Creating Custom rules ..."
+            # Create custom AppTrust rules
+            # Cypress
+            curl -X POST "${{ vars.JF_URL }}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" -H "Content-Type: application/json" -d '{
+                "name": "Integration Testing (Cypress) Evidence Validation",
+                "description": "This rule validates integration testing (Cypress) evidence exists.",
+                "is_custom": true,
+                "template_id": "1003",
+                "parameters": [
+                  {
+                    "name": "predicateType",
+                    "value": "https://cypress.io/evidence/e2e/v1"
+                  }
+                ]
+              }'
+
+            # JUnit
+            curl -X POST "${{ vars.JF_URL }}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" -H "Content-Type: application/json" -d '{
+                "name": "UT (JUT) Evidence Validation",
+                "description": "This rule validates unit testing (JUnit) evidence exists.",
+                "is_custom": true,
+                "template_id": "1003",
+                "parameters": [
+                  {
+                    "name": "predicateType",
+                    "value": "https://jfrog.com/evidence/test-results/v1"
+                  }
+                ]
+              }'
+
+            # JIRA
+            curl -X POST "${{ vars.JF_URL }}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" -H "Content-Type: application/json" -d '{
+                "name": "JIRA Evidence Validation",
+                "description": "This rule validates existence of JIRA evidence.",
+                "is_custom": true,
+                "template_id": "1003",
+                "parameters": [
+                  {
+                    "name": "predicateType",
+                    "value": "http://atlassian.com/jira/issues/v1"
+                  }
+                ]
+              }'
+            echo "Custom rules created successfully."
+
+            echo "Custom rules gates creation ..."
+            # Create AppTrust Exit gates for Project stages
+            curl -X POST "${{ vars.JF_URL }}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" -H "Content-Type: application/json" -d '{
+                "name": "btcwallet-PreProd.Exit Gate Certification",
+                "description": "Triggers a policy violation if the AppTrust gate certification evidence for btcwallet-PreProd.Exit is not attached to the evaluated resource.",
+                "is_custom": true,
+                "template_id": "1004",
+                "parameters": [
+                  {
+                    "name": "predicateType",
+                    "value": "https://jfrog.com/evidence/apptrust/gate-certify/v1"
+                  },
+                  {
+                    "name": "stage",
+                    "value": "btcwallet-PreProd"
+                  },
+                  {
+                    "name": "gate",
+                    "value": "exit"
+                  }
+                ]
+              }'
+
+            curl -X POST "${{ vars.JF_URL }}/unifiedpolicy/api/v1/rules" -H "Authorization: Bearer ${{ env.JF_ACCESS_TOKEN }}" -H "Content-Type: application/json" -d '{
+                "name": "btcwallet-QA.Exit Gate Certification",
+                "description": "Triggers a policy violation if the AppTrust gate certification evidence for btcwallet-QA.Exit is not attached to the evaluated resource.",
+                "is_custom": true,
+                "template_id": "1004",
+                "parameters": [
+                  {
+                    "name": "predicateType",
+                    "value": "https://jfrog.com/evidence/apptrust/gate-certify/v1"
+                  },
+                  {
+                    "name": "stage",
+                    "value": "btcwallet-QA"
+                  },
+                  {
+                    "name": "gate",
+                    "value": "exit"
+                  }
+                ]
+              }'
+            echo "Custom rules gates created successfully."
