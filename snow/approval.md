@@ -1,4 +1,4 @@
-# ServiceNow Change Request: burger-shop - 1.0.0
+# ServiceNow Change Request: btcwalletapp
 
 - Change number: [CHG0030102](https://goldengate2.service-now.com/now/sow/record/change_request/a22c10833bf43690a06c95e643e45afe)
 - Status: Approved
