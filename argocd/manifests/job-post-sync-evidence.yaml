@@ -11,7 +11,8 @@ spec:
       volumes:
       - name: jf-secrets-volume
         secret:
-          secretName: apptrustinfra-jf-cli
+          secretName: trainingdayapptrustb-jf-cli
+          # secretName: apptrustinfra-jf-cli
       - name: signing-key
         secret:
           secretName: evd-signing-key
@@ -111,7 +112,8 @@ spec:
 
             # Configure JSON CLI
             export CI="true"
-            export JFROG_CLI_URL="https://apptrustinfra.jfrog.io"
+            # export JFROG_CLI_URL="https://apptrustinfra.jfrog.io"
+            export JFROG_CLI_URL="https://trainingdayapptrustb.jfrog.io"
             export JFROG_CLI_TOKEN=$(cat /etc/jfsecrets/JF_TOKEN)
             export JFROG_CLI_SIGNING_KEY=$(cat /etc/signkey/SIGNING_KEY)
             export JFROG_CLI_KEY_ALIAS="RSA-4096"
