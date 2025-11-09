@@ -114,6 +114,7 @@ spec:
             export JFROG_CLI_URL="https://apptrustinfra.jfrog.io"
             export JFROG_CLI_TOKEN=$(cat /etc/jfsecrets/JF_TOKEN)
             export JFROG_CLI_SIGNING_KEY=$(cat /etc/signkey/SIGNING_KEY)
+            export JFROG_CLI_KEY_ALIAS="RSA-4096"
             if [ "" == "$JFROG_CLI_TOKEN" ]; then
                 echo "JF_TOKEN secret is empty."
                 exit 1
