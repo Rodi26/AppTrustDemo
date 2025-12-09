@@ -90,16 +90,38 @@ variable "JIRA_ID_REGEX" {
   type        = string
 }
 
+variable "JFROG_MVN_REPO_VIRTUAL" {
+  description = "JFrog Maven virtual repository."
+  type        = string
+}
+
+variable "JFROG_MVN_REPO_SNAPSHOTS" {
+  description = "JFrog Maven snapshots repository."
+  type        = string
+}
+
+variable "JFROG_MVN_REPO_RELEASES" {
+  description = "JFrog Maven releases repository."
+  type        = string
+}
+
 variable "JFROG_CLI_SIGNING_KEY" {
-  description = "JFrog CLI signing key (secret)."
+  description = "JFrog CLI signing key (secret). Can be set via TF_VAR_JFROG_CLI_SIGNING_KEY env var or read from file."
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "JF_ACCESS_TOKEN" {
-  description = "JFrog access token (secret)."
+  description = "JFrog access token (secret). Can be set via TF_VAR_JF_ACCESS_TOKEN or JFROG_ACCESS_TOKEN env var."
   type        = string
   sensitive   = true
+  default     = null
+}
+
+locals {
+  jfrog_access_token = var.JF_ACCESS_TOKEN != null ? var.JF_ACCESS_TOKEN : try(env("JFROG_ACCESS_TOKEN"), "")
+  jfrog_cli_signing_key = var.JFROG_CLI_SIGNING_KEY != null ? var.JFROG_CLI_SIGNING_KEY : try(file("${path.module}/signing_key_rsa.pem"), "")
 }
 
 variable "SONAR_TOKEN" {

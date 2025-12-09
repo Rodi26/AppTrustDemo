@@ -1,5 +1,9 @@
 terraform {
   required_providers {
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.0"
+    }
     artifactory = {
       source  = "jfrog/artifactory"
       version = "12.11.0"
@@ -7,42 +11,44 @@ terraform {
     platform = {
       source  = "jfrog/platform"
       version = "2.2.6"
-    
     }
   }
 }
 
 provider "artifactory" {
-  url      = var.JF_URL
+  url         = var.JF_URL
+  access_token = var.JF_ACCESS_TOKEN
 }
 
 provider "platform" {
-  url      = var.JF_URL
+  url         = var.JF_URL
+  access_token = var.JF_ACCESS_TOKEN
 }
 
-resource "jfrog_access_oidc_provider" "btcwallet_oidc" {
-  name     = "btcwallet-gh"
-  issuer   = "https://token.actions.githubusercontent.com"
-  audiences = ["btcwallet-gh"]
-  jwks_uri = "https://token.actions.githubusercontent.com/.well-known/jwks.json"
+resource "platform_oidc_configuration" "btcwallet_oidc" {
+  provider      = platform
+  name          = "btcwallet-gh"
+  issuer_url    = "https://token.actions.githubusercontent.com"
+  audience      = "btcwallet-gh"
+  provider_type = "GitHub"
+  # organization is optional but recommended for GitHub
+  organization  = var.github_owner
+  description   = "OIDC configuration for GitHub Actions authentication"
 }
 
-resource "jfrog_platform_oidc_identity_mapping" "btcwallet_mapping" {
-  provider_name = jfrog_access_oidc_provider.btcwallet_oidc.name
+resource "platform_oidc_identity_mapping" "btcwallet_mapping" {
+  provider      = platform
+  provider_name = platform_oidc_configuration.btcwallet_oidc.name
+  name          = "github-actions-mapping"
+  priority      = 1
 
-  name = "github-actions-mapping" 
+  claims_json = jsonencode({
+    actor      = var.github_owner
+    repository = "${var.github_owner}/${var.github_repository}"
+  })
 
-  claims = {
-    # Claim key and expected value
-    "actor" = var.github_owner,
-    "repository" = "${var.github_owner}/${var.github_repository}"
+  token_spec = {
+    username = var.JF_USER
+    scope    = "applied-permissions/admin"
   }
-
-  # For example, mapping to a group or permission target
-  user = [var.JF_USER]
-
-  # Or permission targets can be specified here
-  # permission_targets = ["readers", "writers"]
-
-  # Optional: users, usernames, external groups, etc.
 }

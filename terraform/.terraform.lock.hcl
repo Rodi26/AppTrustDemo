@@ -1,0 +1,71 @@
+# This file is maintained automatically by "terraform init".
+# Manual edits may be lost in future updates.
+
+provider "registry.terraform.io/integrations/github" {
+  version     = "6.9.0"
+  constraints = "~> 6.0"
+  hashes = [
+    "h1:TZh2ryQYxXFTLW6861U0GWmDQllwWwKGlmVlJ4H80Xs=",
+    "zh:0136ce1ca9e438c6af2d2c46a415d9288616597ff7ef943f7b67f352917d2e0a",
+    "zh:0e46a1ff95096fdb2f40c6fcb172ba64a2002c9ce8edab8057f66f192a928be0",
+    "zh:222a4489f4188532643e3341413b9c44b1383d5c722ec45b6f21266a4c4ba2aa",
+    "zh:26a28a08588ee57b6da330bd8ef403045a68a13c42aab4943f67797013b5b6f1",
+    "zh:4cbee92a76b6709f1f543ed838e17ca52eb03a0eb6edc33bc68a78cd0baa0cf3",
+    "zh:54d9cef3445afedd630110a57b866ebb8daddfce8c2faafa46573c4514acdd13",
+    "zh:5b0e9feb58d6271752578a29756f1bd03a2fa9b4f70314f5b514eaabfe29019b",
+    "zh:7c43adad6b481b2d8787bef0ecfa62c95dd335072c160e72e462f83accf0f029",
+    "zh:7dadeb33d40c8b06a8d756e47bc7ea2e7d8a9d8a2f0b2c887c4b3df39c5350a4",
+    "zh:8a5f10033c0b3c2859aef39c0270c67e41634315e38234265bf84d530d0ea74f",
+    "zh:8d47c8cb36fda0f035cd8226b9da4b95d3b952808879759770850d70e2a52150",
+    "zh:b47f7e5318506658e44bf1cae266c3718bb427f0f92f7197c2c9d8571d24d091",
+    "zh:b6197414be228b81c06a7929a50c45daeb3d7a256f482f19b90c214cd787526f",
+    "zh:e02bbc0f4d59150945f2422cb0d81b21eb845c66e9ca5caf2dcaa3da6007a140",
+    "zh:fbd1fee2c9df3aa19cf8851ce134dea6e45ea01cb85695c1726670c285797e25",
+  ]
+}
+
+provider "registry.terraform.io/jfrog/artifactory" {
+  version     = "12.11.0"
+  constraints = "12.11.0"
+  hashes = [
+    "h1:C0ISePvpi2o1PCUztLCPON4lO43WWHAgK9PqgQbCS5Q=",
+    "zh:0dde99e7b343fa01f8eefc378171fb8621bedb20f59157d6cc8e3d46c738105f",
+    "zh:28f02d5e1f48b59fe56336f5f74f653a1fe6f36b1f29c7710c5607cc89416f9f",
+    "zh:37ea5245210fecf99cf011ab14ae447aaf92ec31d7c70d219c99b00484e7e6db",
+    "zh:6104e8fc02fca5b6f00ccc64f4153a0b0206369686d717caf03c1312946357a3",
+    "zh:7d65420eaad7dc70778cb0645b38fbba054dbc96b6a9c339d104200cca386a20",
+    "zh:820b3b97d67bdfd7457e3727ba60485a00b0b45e4bc52f865f59405d99c37d55",
+    "zh:9733cea3ac98baf331cd9dba41ac2799bbd149aa8d06b898ab771a332a94ad55",
+    "zh:9b5af6a32060127ce47612d13001cdfbf84064af2699eb78d48ed4f3c85c81f4",
+    "zh:ac5610eb46aea76cca30e5f46c459bd0fc90cde510a2b3f987e5c50f3cb032ff",
+    "zh:bf1897cee1a32f829e89e787760d02b5f84e0b240993f7c2906af3f1d11b5ec2",
+    "zh:d43753dbd6ec1dc664f86edb6cd2aadc67ccb0f67f6f67225cc61cf656f77fa3",
+    "zh:d47e58ec6383afd082fcf77614e0bc1528c743b3cfad67c211c5c0703858fb55",
+    "zh:fc055f21ee2a0d806a3dd3bdc28015c8bf2227d887529e22a5edb20b55107fe6",
+    "zh:fce126e53ecc5b0f959120f422abd628ef2768bfe3257847b5b2072694a8aaca",
+    "zh:fe9936ae0162b4019cc0ea01b8c5ce4a109de6e8375a3cb32fa35ca7a806940c",
+  ]
+}
+
+provider "registry.terraform.io/jfrog/platform" {
+  version     = "2.2.6"
+  constraints = "2.2.6"
+  hashes = [
+    "h1:/UAoY5YVSlggHVZZdtHSCLMeeojbi5YKa8QR/LkxMCI=",
+    "zh:01f6c7362510da10e54f91808594125f9adfb8dfcc370a49829072151be50bdd",
+    "zh:13ab4dbc1406bcac30f34c1ea8334f477e2924c5ce5b46a07b444916fe35dcaf",
+    "zh:218ea7e3d0cbfba6fbb5f23eec056354cee7487782f1e8aaca72b27fad121d0c",
+    "zh:3a806a9d2e57ef3bef2ba5222e7bf6eb9986606979713884dc6dd4add9088c73",
+    "zh:576e0e78b9aaca4b3f4038c7bba55fc492fcba5406181353d10f6a8ecb674657",
+    "zh:6971ac9dd7ffa3cfebc481a9613b1ea4719ca00c2674334e81ceaa75f91d2152",
+    "zh:a7279ff2106970e8ee6ac3631ced3c49958d8c9c0589dbd25dba8fd60ee623b4",
+    "zh:c4a2c17beea87fbf943b58476e3ef6b933e48a874a86d4786d55a489b7ea7e82",
+    "zh:c5104dec4a0d474f8c969c820ae07a5a7d353e9d16216c32f4cd23707da92c1b",
+    "zh:cd5084f714dff8bbe288a04152c42648903be2478e89656946a8f5f4046d1374",
+    "zh:da5a8f940807031cf177b2f71d7386cde5fd737b7c5290f74b5855e6fa88ff5f",
+    "zh:eccc280ab7d04c69c39154605125efc59f59d74f186f7c3dd8450102db9047a1",
+    "zh:f0a92247acfb46b9c447f1d66f08370fe62d55a8ce35edb65c90cac0a773f4f1",
+    "zh:f7e3dcb16a604f677f432c50aa2af2544c5ada22e6b4ffdf4ea22f156a592146",
+    "zh:f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32",
+  ]
+}
