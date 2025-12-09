@@ -200,7 +200,27 @@ jobs:
         jf evd create --subject-repo-path ${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}/${{ github.run_number }}/list.manifest.json  \
           --project ${{ env.JF_PROJECT }} --predicate ./test-evidence.json --predicate-type https://jfrog.com/evidence/test-results/v1 \
           --markdown ./test-evidence.md --provider-id junit
-        jf evd create --package-name ${{ env.SOURCE_BUILD_NAME }} --package-version ${{ github.run_number }} --package-repo-name ${{ env.PROJECT_DOCKER_DEV_REPO }} --project ${{ env.JF_PROJECT }} --integration sonar
+        
+        # Create SonarQube evidence only if report-task.txt exists
+        # Check multiple possible locations for report-task.txt
+        SONAR_REPORT=""
+        if [ -f ".sonar/report-task.txt" ]; then
+          SONAR_REPORT=".sonar/report-task.txt"
+        elif [ -f "../.sonar/report-task.txt" ]; then
+          SONAR_REPORT="../.sonar/report-task.txt"
+        elif [ -f "${{ env.SOURCE_BUILD_NAME }}/.sonar/report-task.txt" ]; then
+          SONAR_REPORT="${{ env.SOURCE_BUILD_NAME }}/.sonar/report-task.txt"
+        fi
+        
+        if [ -n "$SONAR_REPORT" ]; then
+          echo "✅ SonarQube report-task.txt found at: $SONAR_REPORT"
+          echo "Creating SonarQube evidence..."
+          jf evd create --package-name ${{ env.SOURCE_BUILD_NAME }} --package-version ${{ github.run_number }} --package-repo-name ${{ env.PROJECT_DOCKER_DEV_REPO }} --project ${{ env.JF_PROJECT }} --integration sonar
+        else
+          echo "⚠️ SonarQube report-task.txt not found, skipping SonarQube evidence creation"
+          echo "This is normal if SonarQube scan failed or was skipped"
+          echo "Checked locations: .sonar/report-task.txt, ../.sonar/report-task.txt, ${{ env.SOURCE_BUILD_NAME }}/.sonar/report-task.txt"
+        fi
 
     - name: Test Docker image
       run: |

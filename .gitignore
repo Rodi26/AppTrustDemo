@@ -241,3 +241,6 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+signing_key.pem
+signing_key.pub
+signing_key_rsa.pem
