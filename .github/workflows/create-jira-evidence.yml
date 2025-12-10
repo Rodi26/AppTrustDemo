@@ -7,7 +7,7 @@ on:
         description: "Build name for the evidence"
         required: true
       build_number:
-        description: "Build number for the evidence"
+        description: "Build number  for the evidence"
         required: true
   workflow_call:
     inputs:
