@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 )
@@ -25,6 +26,9 @@ func NewJiraClient() (*JiraClient, error) {
 	if jiraURL == "" {
 		return nil, &ValidationError{Field: "JIRA_URL", Value: "", Err: fmt.Errorf("environment variable not found")}
 	}
+
+	// Normalize JIRA URL: remove trailing slash if present
+	jiraURL = strings.TrimSuffix(jiraURL, "/")
 
 	jiraUsername := os.Getenv("JIRA_USERNAME")
 	if jiraUsername == "" {
@@ -67,6 +71,10 @@ func (jc *JiraClient) fetchSingleJiraDetail(jiraID string) JiraTransitionResult 
 	issue, resp, err := jc.client.Issue.Get(context.Background(), jiraID, &jira.GetQueryOptions{Expand: "changelog"})
 
 	if err != nil || issue == nil || issue.Fields == nil {
+		// Log additional debug information
+		if resp != nil && resp.Request != nil {
+			fmt.Fprintf(os.Stderr, "JIRA API Request URL: %s\n", resp.Request.URL.String())
+		}
 		return jc.createErrorResult(jiraID, err, resp)
 	}
 
