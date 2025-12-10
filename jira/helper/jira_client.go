@@ -46,10 +46,28 @@ func NewJiraClient() (*JiraClient, error) {
 		return nil, fmt.Errorf("failed to create JIRA client: %w", err)
 	}
 
-	return &JiraClient{
+	// Test connection by getting current user info
+	jc := &JiraClient{
 		client:  client,
 		baseURL: jiraURL,
-	}, nil
+	}
+	
+	// Verify authentication works by checking current user
+	if err := jc.verifyConnection(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: JIRA connection verification failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "This may indicate authentication issues, but continuing anyway...\n")
+	}
+
+	return jc, nil
+}
+
+// verifyConnection verifies that the JIRA connection and authentication work
+func (jc *JiraClient) verifyConnection() error {
+	_, _, err := jc.client.User.GetSelf(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to verify JIRA connection (cannot get current user): %w", err)
+	}
+	return nil
 }
 
 // FetchJiraDetails fetches JIRA details sequentially
@@ -72,8 +90,19 @@ func (jc *JiraClient) fetchSingleJiraDetail(jiraID string) JiraTransitionResult 
 
 	if err != nil || issue == nil || issue.Fields == nil {
 		// Log additional debug information
-		if resp != nil && resp.Request != nil {
-			fmt.Fprintf(os.Stderr, "JIRA API Request URL: %s\n", resp.Request.URL.String())
+		if resp != nil {
+			if resp.Request != nil {
+				fmt.Fprintf(os.Stderr, "JIRA API Request URL: %s\n", resp.Request.URL.String())
+			}
+			if resp.StatusCode == 404 {
+				// For 404 errors, provide more helpful debugging info
+				fmt.Fprintf(os.Stderr, "Debug: Ticket %s returned 404. Possible reasons:\n", jiraID)
+				fmt.Fprintf(os.Stderr, "  1. Ticket does not exist in this Jira instance\n")
+				fmt.Fprintf(os.Stderr, "  2. Ticket exists but you don't have permission to view it\n")
+				fmt.Fprintf(os.Stderr, "  3. Project '%s' does not exist or is not accessible\n", strings.Split(jiraID, "-")[0])
+				fmt.Fprintf(os.Stderr, "  4. API token does not have sufficient permissions\n")
+				fmt.Fprintf(os.Stderr, "  Verify ticket exists at: %s/browse/%s\n", jc.baseURL, jiraID)
+			}
 		}
 		return jc.createErrorResult(jiraID, err, resp)
 	}

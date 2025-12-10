@@ -39,17 +39,8 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        cache: 'pip'
+        # Note: cache disabled because we use --no-cache-dir to save disk space
         
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-test-${{ hashFiles('translate/requirements-optimized.txt') }}-${{ hashFiles('translate/requirements-dev.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-test-${{ hashFiles('translate/requirements-optimized.txt') }}
-          ${{ runner.os }}-pip-test
-
     - name: Install dependencies and run tests
       run: |
         cd translate
@@ -58,10 +49,6 @@ jobs:
         # Install minimal test dependencies
         pip install --no-cache-dir pytest pytest-asyncio
         python -m pytest tests/ -v --tb=short
-        
-    - name: Cleanup pip cache
-      run: |
-        pip cache purge
 
   build:
     name: Build Docker Image
