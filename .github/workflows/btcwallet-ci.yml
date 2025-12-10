@@ -203,13 +203,20 @@ jobs:
         
         # Create SonarQube evidence only if report-task.txt exists
         # Check multiple possible locations for report-task.txt
+        # SonarQube scanner can create report-task.txt in .sonar/ or .scannerwork/ directories
         SONAR_REPORT=""
         if [ -f ".sonar/report-task.txt" ]; then
           SONAR_REPORT=".sonar/report-task.txt"
+        elif [ -f ".scannerwork/report-task.txt" ]; then
+          SONAR_REPORT=".scannerwork/report-task.txt"
         elif [ -f "../.sonar/report-task.txt" ]; then
           SONAR_REPORT="../.sonar/report-task.txt"
+        elif [ -f "../.scannerwork/report-task.txt" ]; then
+          SONAR_REPORT="../.scannerwork/report-task.txt"
         elif [ -f "${{ env.SOURCE_BUILD_NAME }}/.sonar/report-task.txt" ]; then
           SONAR_REPORT="${{ env.SOURCE_BUILD_NAME }}/.sonar/report-task.txt"
+        elif [ -f "${{ env.SOURCE_BUILD_NAME }}/.scannerwork/report-task.txt" ]; then
+          SONAR_REPORT="${{ env.SOURCE_BUILD_NAME }}/.scannerwork/report-task.txt"
         fi
         
         if [ -n "$SONAR_REPORT" ]; then
@@ -219,7 +226,10 @@ jobs:
         else
           echo "⚠️ SonarQube report-task.txt not found, skipping SonarQube evidence creation"
           echo "This is normal if SonarQube scan failed or was skipped"
-          echo "Checked locations: .sonar/report-task.txt, ../.sonar/report-task.txt, ${{ env.SOURCE_BUILD_NAME }}/.sonar/report-task.txt"
+          echo "Checked locations: .sonar/report-task.txt, .scannerwork/report-task.txt, ../.sonar/report-task.txt, ../.scannerwork/report-task.txt, ${{ env.SOURCE_BUILD_NAME }}/.sonar/report-task.txt, ${{ env.SOURCE_BUILD_NAME }}/.scannerwork/report-task.txt"
+          echo "Debug: Listing .sonar and .scannerwork directories if they exist:"
+          [ -d ".sonar" ] && echo "  .sonar directory exists:" && ls -la .sonar/ || echo "  .sonar directory does not exist"
+          [ -d ".scannerwork" ] && echo "  .scannerwork directory exists:" && ls -la .scannerwork/ || echo "  .scannerwork directory does not exist"
         fi
 
     - name: Test Docker image
