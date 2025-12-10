@@ -46,28 +46,13 @@ func NewJiraClient() (*JiraClient, error) {
 		return nil, fmt.Errorf("failed to create JIRA client: %w", err)
 	}
 
-	// Test connection by getting current user info
+	// Create JIRA client instance
 	jc := &JiraClient{
 		client:  client,
 		baseURL: jiraURL,
 	}
-	
-	// Verify authentication works by checking current user
-	if err := jc.verifyConnection(); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: JIRA connection verification failed: %v\n", err)
-		fmt.Fprintf(os.Stderr, "This may indicate authentication issues, but continuing anyway...\n")
-	}
 
 	return jc, nil
-}
-
-// verifyConnection verifies that the JIRA connection and authentication work
-func (jc *JiraClient) verifyConnection() error {
-	_, _, err := jc.client.User.GetSelf(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to verify JIRA connection (cannot get current user): %w", err)
-	}
-	return nil
 }
 
 // FetchJiraDetails fetches JIRA details sequentially
