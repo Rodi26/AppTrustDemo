@@ -64,21 +64,41 @@ func (jc *JiraClient) FetchJiraDetails(jiraIDs []string) TransitionCheckResponse
 
 // fetchSingleJiraDetail fetches details for a single JIRA ID
 func (jc *JiraClient) fetchSingleJiraDetail(jiraID string) JiraTransitionResult {
-	issue, _, err := jc.client.Issue.Get(context.Background(), jiraID, &jira.GetQueryOptions{Expand: "changelog"})
+	issue, resp, err := jc.client.Issue.Get(context.Background(), jiraID, &jira.GetQueryOptions{Expand: "changelog"})
 
 	if err != nil || issue == nil || issue.Fields == nil {
-		return jc.createErrorResult(jiraID, err)
+		return jc.createErrorResult(jiraID, err, resp)
 	}
 
 	return jc.createSuccessResult(issue)
 }
 
 // createErrorResult creates an error result for a failed JIRA fetch
-func (jc *JiraClient) createErrorResult(jiraID string, err error) JiraTransitionResult {
+func (jc *JiraClient) createErrorResult(jiraID string, err error, resp *jira.Response) JiraTransitionResult {
 	errorMsg := "Error: Could not retrieve issue"
+	statusCode := 0
+	
+	if resp != nil {
+		statusCode = resp.StatusCode
+	}
+	
 	if err != nil {
-		errorMsg = fmt.Sprintf("Error: %v", err)
-		fmt.Fprintf(os.Stderr, "Failed to fetch JIRA %s: %v\n", jiraID, err)
+		// Check for specific error types
+		if statusCode == 404 {
+			errorMsg = fmt.Sprintf("Error: Issue does not exist or you do not have permission to see it.: %v", err)
+		} else if statusCode == 403 {
+			errorMsg = fmt.Sprintf("Error: Permission denied. You do not have access to view this issue.: %v", err)
+		} else if statusCode == 401 {
+			errorMsg = fmt.Sprintf("Error: Authentication failed. Please check your JIRA credentials.: %v", err)
+		} else {
+			errorMsg = fmt.Sprintf("Error: %v", err)
+		}
+		
+		if statusCode > 0 {
+			fmt.Fprintf(os.Stderr, "Failed to fetch JIRA %s (HTTP %d): %v\n", jiraID, statusCode, err)
+		} else {
+			fmt.Fprintf(os.Stderr, "Failed to fetch JIRA %s: %v\n", jiraID, err)
+		}
 	}
 
 	return JiraTransitionResult{
