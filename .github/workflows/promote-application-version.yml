@@ -254,13 +254,53 @@ jobs:
           
           echo "✅ All tests passed successfully"
 
+      - name: Get release bundle path from application version
+        id: get_release_bundle
+        run: |
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER"
+          echo "Fetching application version details from: $URL"
+          
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            "$URL")
+          
+          if [ "$STATUS_CODE" != "200" ]; then
+            echo "Error: Failed to get application version details. HTTP status: $STATUS_CODE"
+            cat "$RESPONSE_FILE"
+            rm "$RESPONSE_FILE"
+            exit 1
+          fi
+          
+          # Extract release bundle repository and path from the response
+          RELEASE_BUNDLE_REPO=$(cat "$RESPONSE_FILE" | jq -r '.release_bundle.repository_key // empty')
+          RELEASE_BUNDLE_PATH=$(cat "$RESPONSE_FILE" | jq -r '.release_bundle.path // empty')
+          
+          if [ -z "$RELEASE_BUNDLE_REPO" ] || [ -z "$RELEASE_BUNDLE_PATH" ]; then
+            echo "Warning: Release bundle information not found in API response. Using default path."
+            echo "Response:"
+            cat "$RESPONSE_FILE"
+            # Fallback to default path
+            RELEASE_BUNDLE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
+          else
+            RELEASE_BUNDLE_PATH="$RELEASE_BUNDLE_REPO/$RELEASE_BUNDLE_PATH"
+          fi
+          
+          rm "$RESPONSE_FILE"
+          echo "Release bundle path: $RELEASE_BUNDLE_PATH"
+          echo "release_bundle_path=$RELEASE_BUNDLE_PATH" >> $GITHUB_OUTPUT
+
       - name: Create evidence from test results
         run: |
           echo "📋 Creating evidence from test results..."
           cd e2e-tests
 
+          RELEASE_BUNDLE_PATH="${{ steps.get_release_bundle.outputs.release_bundle_path }}"
+          echo "Using release bundle path: $RELEASE_BUNDLE_PATH"
+
           jf evd create \
-              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd" \
+              --subject-repo-path="$RELEASE_BUNDLE_PATH" \
               --project ${{ env.JF_PROJECT }} \
               --predicate test-report.json \
               --predicate-type https://cypress.io/evidence/e2e/v1 \
