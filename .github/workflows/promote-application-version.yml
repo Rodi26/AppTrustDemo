@@ -258,6 +258,8 @@ jobs:
         id: get_release_bundle
         run: |
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          
+          # Query application version details to find release bundle information
           URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER"
           echo "Fetching application version details from: $URL"
           
@@ -273,22 +275,42 @@ jobs:
             exit 1
           fi
           
-          # Extract release bundle repository and path from the response
-          RELEASE_BUNDLE_REPO=$(cat "$RESPONSE_FILE" | jq -r '.release_bundle.repository_key // empty')
-          RELEASE_BUNDLE_PATH=$(cat "$RESPONSE_FILE" | jq -r '.release_bundle.path // empty')
+          echo "Application version API response:"
+          cat "$RESPONSE_FILE" | jq '.'
           
+          # Try to extract release bundle information from various possible fields
+          # The API might return it as artifacts, repositories, or release_bundle
+          RELEASE_BUNDLE_REPO=$(cat "$RESPONSE_FILE" | jq -r '.release_bundle.repository_key // .artifacts[0].repository_key // .repositories[0].repository_key // empty')
+          RELEASE_BUNDLE_PATH=$(cat "$RESPONSE_FILE" | jq -r '.release_bundle.path // .artifacts[0].path // .repositories[0].path // empty')
+          
+          # If still not found, try to find release bundle evidence file in artifacts
+          if [ -z "$RELEASE_BUNDLE_PATH" ]; then
+            EVD_PATH=$(cat "$RESPONSE_FILE" | jq -r '.artifacts[]? | select(.path | contains("release-bundle.json.evd")) | .path // empty' | head -1)
+            if [ -n "$EVD_PATH" ]; then
+              RELEASE_BUNDLE_REPO=$(cat "$RESPONSE_FILE" | jq -r '.artifacts[]? | select(.path | contains("release-bundle.json.evd")) | .repository_key // empty' | head -1)
+              RELEASE_BUNDLE_PATH="$EVD_PATH"
+            fi
+          fi
+          
+          # Fallback to default path structure if not found in API response
           if [ -z "$RELEASE_BUNDLE_REPO" ] || [ -z "$RELEASE_BUNDLE_PATH" ]; then
-            echo "Warning: Release bundle information not found in API response. Using default path."
-            echo "Response:"
-            cat "$RESPONSE_FILE"
-            # Fallback to default path
-            RELEASE_BUNDLE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
+            echo "Warning: Release bundle information not found in API response. Using default path structure."
+            echo "Full API response for debugging:"
+            cat "$RESPONSE_FILE" | jq '.'
+            # Use the standard AppTrust release bundle path structure
+            # Try release-bundle.json first (the actual release bundle), then fallback to .evd file
+            RELEASE_BUNDLE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json"
           else
+            # Construct full path: repository/path
             RELEASE_BUNDLE_PATH="$RELEASE_BUNDLE_REPO/$RELEASE_BUNDLE_PATH"
+            # If path ends with .evd, try without it first (use the actual release bundle JSON)
+            if [[ "$RELEASE_BUNDLE_PATH" == *.evd ]]; then
+              RELEASE_BUNDLE_PATH="${RELEASE_BUNDLE_PATH%.evd}"
+            fi
           fi
           
           rm "$RESPONSE_FILE"
-          echo "Release bundle path: $RELEASE_BUNDLE_PATH"
+          echo "Using release bundle path: $RELEASE_BUNDLE_PATH"
           echo "release_bundle_path=$RELEASE_BUNDLE_PATH" >> $GITHUB_OUTPUT
 
       - name: Create evidence from test results
@@ -299,6 +321,9 @@ jobs:
           RELEASE_BUNDLE_PATH="${{ steps.get_release_bundle.outputs.release_bundle_path }}"
           echo "Using release bundle path: $RELEASE_BUNDLE_PATH"
 
+          # Try creating evidence with the release bundle path
+          # If it fails with 404, try with .evd extension
+          set +e
           jf evd create \
               --subject-repo-path="$RELEASE_BUNDLE_PATH" \
               --project ${{ env.JF_PROJECT }} \
@@ -306,5 +331,28 @@ jobs:
               --predicate-type https://cypress.io/evidence/e2e/v1 \
               --markdown test-report.md \
               --provider-id cypress
+          
+          EVD_EXIT_CODE=$?
+          
+          # If failed and path doesn't end with .evd, try with .evd extension
+          if [ $EVD_EXIT_CODE -ne 0 ] && [[ ! "$RELEASE_BUNDLE_PATH" == *.evd ]]; then
+            echo "First attempt failed, trying with .evd extension..."
+            RELEASE_BUNDLE_PATH_EVD="${RELEASE_BUNDLE_PATH}.evd"
+            jf evd create \
+                --subject-repo-path="$RELEASE_BUNDLE_PATH_EVD" \
+                --project ${{ env.JF_PROJECT }} \
+                --predicate test-report.json \
+                --predicate-type https://cypress.io/evidence/e2e/v1 \
+                --markdown test-report.md \
+                --provider-id cypress
+            EVD_EXIT_CODE=$?
+          fi
+          
+          set -e
+          
+          if [ $EVD_EXIT_CODE -ne 0 ]; then
+            echo "❌ Failed to create evidence. Exit code: $EVD_EXIT_CODE"
+            exit 1
+          fi
                    
           echo "✅ Evidence created successfully"
