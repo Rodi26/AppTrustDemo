@@ -258,9 +258,10 @@ jobs:
         id: get_release_bundle
         run: |
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
-          # Query the application version content to find the release bundle
-          URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/content"
-          echo "Fetching application version content from: $URL"
+          # Query the application version content with artifacts to find the release bundle
+          # Try with include=artifacts first
+          URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/content?include=artifacts&limit=100"
+          echo "Fetching application version content with artifacts from: $URL"
           
           RESPONSE_FILE=$(mktemp)
           STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" \
@@ -268,17 +269,20 @@ jobs:
             "$URL")
           
           if [ "$STATUS_CODE" != "200" ]; then
-            echo "Error: Failed to get application version content. HTTP status: $STATUS_CODE"
-            cat "$RESPONSE_FILE"
+            echo "Warning: Failed to get artifacts. HTTP status: $STATUS_CODE. Trying without query params..."
+            # Fallback to default path
+            RELEASE_BUNDLE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json"
+            echo "Using default release bundle path: $RELEASE_BUNDLE_PATH"
+            echo "release_bundle_path=$RELEASE_BUNDLE_PATH" >> $GITHUB_OUTPUT
             rm "$RESPONSE_FILE"
-            exit 1
+            exit 0
           fi
           
-          echo "Application version content response:"
-          cat "$RESPONSE_FILE" | jq '.'
+          echo "Application version content response (first 1000 chars):"
+          head -c 1000 "$RESPONSE_FILE"
+          echo ""
           
-          # Try to find release bundle in artifacts or repositories
-          # Check artifacts first
+          # Try to find release bundle in artifacts
           RELEASE_BUNDLE_REPO=$(cat "$RESPONSE_FILE" | jq -r '.artifacts[]? | select(.path | contains("release-bundle")) | .repository_key // empty' | head -1)
           RELEASE_BUNDLE_PATH=$(cat "$RESPONSE_FILE" | jq -r '.artifacts[]? | select(.path | contains("release-bundle")) | .path // empty' | head -1)
           
@@ -288,13 +292,17 @@ jobs:
             RELEASE_BUNDLE_PATH=$(cat "$RESPONSE_FILE" | jq -r '.repositories[]? | select(.path | contains("release-bundle")) | .path // empty' | head -1)
           fi
           
-          # If still not found, use default path structure
+          # If still not found, try to get project_key from response and use default path structure
           if [ -z "$RELEASE_BUNDLE_REPO" ] || [ -z "$RELEASE_BUNDLE_PATH" ]; then
             echo "Warning: Release bundle not found in API response. Using default path structure."
-            echo "Full API response for debugging:"
-            cat "$RESPONSE_FILE" | jq '.'
+            # Try to get project_key from the response, fallback to JF_PROJECT env var
+            PROJECT_KEY=$(cat "$RESPONSE_FILE" | jq -r '.project_key // empty' | head -1)
+            if [ -z "$PROJECT_KEY" ]; then
+              PROJECT_KEY="${{ env.JF_PROJECT }}"
+            fi
+            echo "Using project key: $PROJECT_KEY"
             # Use the standard AppTrust release bundle path structure
-            RELEASE_BUNDLE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json"
+            RELEASE_BUNDLE_PATH="${PROJECT_KEY}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json"
           else
             # Construct full path: repository/path
             RELEASE_BUNDLE_PATH="$RELEASE_BUNDLE_REPO/$RELEASE_BUNDLE_PATH"
