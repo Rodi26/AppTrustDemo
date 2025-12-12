@@ -146,24 +146,9 @@ jobs:
           ]}}"
           echo "REQUEST_BODY=$REQUEST_BODY"
 
-          # #region agent log
-          echo "🔍 [DEBUG] Creating application version - Hypothesis C"
-          echo "  APP_ID: $APP_ID"
-          echo "  Version: $NEXT_VER"
-          echo "  Builds: btcwallet=$BTCWALLET_BUILD_NUMBER, btcwallet-ui=$BTCWALLET_UI_BUILD_NUMBER, ai-translate=$AI_TRANSLATE_BUILD_NUMBER"
-          echo "{\"timestamp\":$(date +%s000),\"location\":\"create-application-version.yml:150\",\"message\":\"Creating application version\",\"data\":{\"app_id\":\"$APP_ID\",\"version\":\"$NEXT_VER\",\"builds\":[{\"name\":\"${{ env.SOURCE_BUILD_NAME_BACKEND }}\",\"number\":\"$BTCWALLET_BUILD_NUMBER\"},{\"name\":\"${{ env.SOURCE_BUILD_NAME_FRONTEND }}\",\"number\":\"$BTCWALLET_UI_BUILD_NUMBER\"},{\"name\":\"${{ env.SOURCE_BUILD_NAME_SERVICE }}\",\"number\":\"$AI_TRANSLATE_BUILD_NUMBER\"}]},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}" | tee -a $GITHUB_WORKSPACE/.cursor/debug.log 2>/dev/null || true
-          # #endregion
-
           RESPONSE_FILE=$(mktemp)
           STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false")
           echo "STATUS_CODE=$STATUS_CODE"
-          
-          # #region agent log
-          echo "🔍 [DEBUG] Application version creation response - Hypothesis C"
-          echo "  Status Code: $STATUS_CODE"
-          echo "  Response: $(cat $RESPONSE_FILE | head -c 500)"
-          echo "{\"timestamp\":$(date +%s000),\"location\":\"create-application-version.yml:158\",\"message\":\"Application version creation response\",\"data\":{\"status_code\":\"$STATUS_CODE\",\"response\":\"$(cat $RESPONSE_FILE | head -c 500 | jq -c . 2>/dev/null || cat $RESPONSE_FILE | head -c 500)\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\"}" | tee -a $GITHUB_WORKSPACE/.cursor/debug.log 2>/dev/null || true
-          # #endregion
           
           if [ "201" != "$STATUS_CODE" ]; then 
               echo "Status code is not 201: $STATUS_CODE"
@@ -172,16 +157,6 @@ jobs:
               rm "$RESPONSE_FILE"
               exit 1
           fi
-          
-          # Fetch created version details to understand what artifacts/repositories are associated
-          VERSION_DETAILS=$(curl -s -X GET -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$NEXT_VER")
-          
-          # #region agent log
-          echo "🔍 [DEBUG] Application version details - Hypothesis B,C"
-          echo "  Version: $NEXT_VER"
-          echo "  Details: $(echo $VERSION_DETAILS | jq -c . 2>/dev/null | head -c 1000 || echo $VERSION_DETAILS | head -c 1000)"
-          echo "{\"timestamp\":$(date +%s000),\"location\":\"create-application-version.yml:170\",\"message\":\"Application version details\",\"data\":{\"version\":\"$NEXT_VER\",\"details\":\"$(echo $VERSION_DETAILS | jq -c . 2>/dev/null | head -c 1000 || echo $VERSION_DETAILS | head -c 1000)\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B,C\"}" | tee -a $GITHUB_WORKSPACE/.cursor/debug.log 2>/dev/null || true
-          # #endregion
           
           rm "$RESPONSE_FILE"
           echo "app_ver=$NEXT_VER" >> $GITHUB_OUTPUT
@@ -197,50 +172,14 @@ jobs:
           echo "REQUEST_BODY: $REQUEST_BODY"
           echo "REQUEST_URL: $REQUEST_URL"
 
-          # #region agent log
-          echo "🔍 [DEBUG] Promotion request details - Hypothesis A,D"
-          echo "  APP_ID: $APP_ID"
-          echo "  Version: $APP_VER"
-          echo "  Target Stage: DEV"
-          echo "  Request Body: $REQUEST_BODY"
-          echo "{\"timestamp\":$(date +%s000),\"location\":\"create-application-version.yml:185\",\"message\":\"Promotion request details\",\"data\":{\"app_id\":\"$APP_ID\",\"version\":\"$APP_VER\",\"target_stage\":\"DEV\",\"request_body\":\"$REQUEST_BODY\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A,D\"}" | tee -a $GITHUB_WORKSPACE/.cursor/debug.log 2>/dev/null || true
-          # #endregion
-
           RESPONSE_FILE=$(mktemp)
           STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$REQUEST_URL")
           echo "STATUS_CODE=$STATUS_CODE"
-          
-          # #region agent log
-          echo "🔍 [DEBUG] Promotion response - Hypothesis A,B,C,D,E"
-          echo "  Status Code: $STATUS_CODE"
-          echo "  Full Response: $(cat $RESPONSE_FILE)"
-          echo "{\"timestamp\":$(date +%s000),\"location\":\"create-application-version.yml:192\",\"message\":\"Promotion response\",\"data\":{\"status_code\":\"$STATUS_CODE\",\"response\":\"$(cat $RESPONSE_FILE | jq -c . 2>/dev/null || cat $RESPONSE_FILE)\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A,B,C,D,E\"}" | tee -a $GITHUB_WORKSPACE/.cursor/debug.log 2>/dev/null || true
-          # #endregion
           
           if [ "200" != "$STATUS_CODE" -a "201" != "$STATUS_CODE" ]; then 
               echo "Status code is not 200 or 201: $STATUS_CODE"
               echo "Response body:"
               cat "$RESPONSE_FILE"
-              
-              # Try to get application and stage configuration details
-              echo "🔍 [DEBUG] Fetching application configuration - Hypothesis B"
-              APP_DETAILS=$(curl -s -X GET -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" "$JF_URL/apptrust/api/v1/applications/$APP_ID")
-              echo "  Application Details:"
-              echo "$APP_DETAILS" | jq . 2>/dev/null || echo "$APP_DETAILS"
-              
-              # Get stage configuration for DEV
-              echo "🔍 [DEBUG] Fetching DEV stage configuration - Hypothesis B"
-              STAGE_DETAILS=$(curl -s -X GET -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" "$JF_URL/apptrust/api/v1/applications/$APP_ID/stages/DEV" 2>/dev/null || echo "{\"error\":\"Could not fetch stage details\"}")
-              echo "  DEV Stage Details:"
-              echo "$STAGE_DETAILS" | jq . 2>/dev/null || echo "$STAGE_DETAILS"
-              
-              # #region agent log
-              echo "🔍 [DEBUG] Application and stage details after promotion failure - Hypothesis B"
-              echo "  App Details: $(echo $APP_DETAILS | jq -c . 2>/dev/null | head -c 1000 || echo $APP_DETAILS | head -c 1000)"
-              echo "  Stage Details: $(echo $STAGE_DETAILS | jq -c . 2>/dev/null | head -c 1000 || echo $STAGE_DETAILS | head -c 1000)"
-              echo "{\"timestamp\":$(date +%s000),\"location\":\"create-application-version.yml:202\",\"message\":\"Application details after promotion failure\",\"data\":{\"app_details\":\"$(echo $APP_DETAILS | jq -c . 2>/dev/null | head -c 1000 || echo $APP_DETAILS | head -c 1000)\",\"stage_details\":\"$(echo $STAGE_DETAILS | jq -c . 2>/dev/null | head -c 1000 || echo $STAGE_DETAILS | head -c 1000)\"},\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B\"}" | tee -a $GITHUB_WORKSPACE/.cursor/debug.log 2>/dev/null || true
-              # #endregion
-              
               rm "$RESPONSE_FILE"
               exit 1
           fi
