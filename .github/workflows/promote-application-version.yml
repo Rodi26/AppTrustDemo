@@ -111,29 +111,24 @@ jobs:
           echo "Target stage: $TARGET_STAGE"
           
           # Exit gates are checked when EXITING a stage, so we need evidence for the SOURCE stage
+          # The policy requires "DEV.Exit AppTrust Gate Certification exist" when promoting from DEV
           # Map stage names to match gate configuration
-          if [ "$CURRENT_STAGE" == "QA" ] || [ "$CURRENT_STAGE" == "btcwallet-QA" ]; then
+          if [ "$CURRENT_STAGE" == "DEV" ]; then
+            # When promoting FROM DEV, we need DEV exit gate evidence
+            STAGE="DEV"
+          elif [ "$CURRENT_STAGE" == "QA" ] || [ "$CURRENT_STAGE" == "btcwallet-QA" ]; then
+            # When promoting FROM QA, we need QA exit gate evidence
             STAGE="btcwallet-QA"
           elif [ "$CURRENT_STAGE" == "PreProd" ] || [ "$CURRENT_STAGE" == "PREPROD" ] || [ "$CURRENT_STAGE" == "btcwallet-PreProd" ]; then
+            # When promoting FROM PreProd, we need PreProd exit gate evidence
             STAGE="btcwallet-PreProd"
-          elif [ "$CURRENT_STAGE" == "DEV" ]; then
-            # DEV stage - check if we're promoting to QA, then we need QA exit gate evidence
-            # Actually, exit gates check when EXITING, so if promoting FROM DEV TO QA,
-            # we need DEV exit gate evidence (if it exists) or the target stage's entry requirements
-            # Based on the error, it seems we need evidence for the stage we're entering (QA)
-            if [ "$TARGET_STAGE" == "QA" ]; then
-              STAGE="btcwallet-QA"
-            else
-              STAGE="$CURRENT_STAGE"
-            fi
           else
             STAGE="$CURRENT_STAGE"
           fi
           
-          echo "Using stage name for evidence: $STAGE"
+          echo "Using stage name for evidence: $STAGE (exit gate for source stage: $CURRENT_STAGE)"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
-          echo "Using stage name: $STAGE (from TARGET_STAGE: ${{ env.TARGET_STAGE }})"
           echo "Application: ${{ env.APP_ID }}"
           echo "Version: $APP_VER"
           
