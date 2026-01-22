@@ -104,6 +104,8 @@ jobs:
           # Create predicate JSON
           cat > gate-certify-predicate.json <<EOF
           {
+            "application_key": "${{ env.APP_ID }}",
+            "application_name": "BTC Wallet App",
             "stage": "$STAGE",
             "gate": "exit",
             "status": "certified",
