@@ -221,7 +221,6 @@ jobs:
           EOF
           
           jf evd create \
-              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd" \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
               --project ${{ env.JF_PROJECT }} \

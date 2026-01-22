@@ -160,16 +160,13 @@ jobs:
           - **Version**: $APP_VER
           EOF
           
-          SUBJECT_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
-          echo "Creating evidence with subject-repo-path: $SUBJECT_PATH"
-          echo "Application: ${{ env.APP_ID }}"
+          echo "Creating evidence for application: ${{ env.APP_ID }}"
           echo "Version: $APP_VER"
           echo "Project: ${{ env.JF_PROJECT }}"
           
           # Create evidence using CLI - explicitly attach to application version
           # Using --application-key and --application-version ensures the evidence is properly assigned
           if ! jf evd create \
-              --subject-repo-path="$SUBJECT_PATH" \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
               --project ${{ env.JF_PROJECT }} \
