@@ -94,6 +94,45 @@ jobs:
             exit 1
           fi
 
+      - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage
+        run: |
+          echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage..."
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          STAGE="${{ env.TARGET_STAGE }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # Create predicate JSON
+          cat > gate-certify-predicate.json <<EOF
+          {
+            "stage": "$STAGE",
+            "gate": "exit",
+            "status": "certified",
+            "timestamp": "$TIMESTAMP"
+          }
+          EOF
+          
+          # Create markdown documentation
+          cat > gate-certify.md <<EOF
+          # Gate Certification Evidence - $STAGE Stage
+          
+          - **Stage**: $STAGE
+          - **Gate Type**: exit
+          - **Status**: certified
+          - **Timestamp**: $TIMESTAMP
+          - **Application**: ${{ env.APP_ID }}
+          - **Version**: $APP_VER
+          EOF
+          
+          jf evd create \
+              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd" \
+              --project ${{ env.JF_PROJECT }} \
+              --predicate gate-certify-predicate.json \
+              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+              --markdown gate-certify.md \
+              --provider-id apptrust
+                   
+          echo "✅ Gate certification evidence created successfully for $STAGE stage"
+
       - name: Create evidence for Release Approval (simulate SNOW)
         run: |
           echo "📋 Creating evidence for Release Approval (SNOW)..."
