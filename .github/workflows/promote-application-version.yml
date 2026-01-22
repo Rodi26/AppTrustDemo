@@ -69,11 +69,30 @@ jobs:
           
           # Get the current stage from the version details
           VERSION_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$LATEST_VER"
+          echo "Fetching version details from: $VERSION_DETAILS_URL"
+          
           VERSION_RESPONSE=$(curl -s -X GET \
             -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
             "$VERSION_DETAILS_URL")
           
-          CURRENT_STAGE=$(echo "$VERSION_RESPONSE" | jq -r '.current_stage // .stage // "DEV"')
+          echo "Version details response (first 500 chars):"
+          echo "$VERSION_RESPONSE" | head -c 500
+          echo ""
+          
+          # Check if response is valid JSON before parsing
+          if echo "$VERSION_RESPONSE" | jq . >/dev/null 2>&1; then
+            echo "Version details response is valid JSON"
+            # Try to extract current_stage, default to DEV if not found
+            CURRENT_STAGE=$(echo "$VERSION_RESPONSE" | jq -r '.current_stage // .stage // .stages[0] // "DEV"' 2>/dev/null || echo "DEV")
+          else
+            echo "Warning: Version details response is not valid JSON, defaulting to DEV"
+            CURRENT_STAGE="DEV"
+          fi
+          
+          # If still empty or null, default to DEV
+          if [ "$CURRENT_STAGE" == "null" ] || [ -z "$CURRENT_STAGE" ]; then
+            CURRENT_STAGE="DEV"
+          fi
           
           echo "Found latest application version: $LATEST_VER"
           echo "Current stage: $CURRENT_STAGE"
