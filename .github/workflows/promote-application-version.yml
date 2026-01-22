@@ -67,21 +67,51 @@ jobs:
             exit 1
           fi
           
+          # Get the current stage from the version details
+          VERSION_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$LATEST_VER"
+          VERSION_RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            "$VERSION_DETAILS_URL")
+          
+          CURRENT_STAGE=$(echo "$VERSION_RESPONSE" | jq -r '.current_stage // .stage // "DEV"')
+          
           echo "Found latest application version: $LATEST_VER"
+          echo "Current stage: $CURRENT_STAGE"
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
+          echo "current_stage=$CURRENT_STAGE" >> $GITHUB_OUTPUT
 
-      - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage (before promotion)
+      - name: Create gate certification evidence for source stage (before promotion)
         run: |
           set -e
-          echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage..."
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
-          # Use the exact stage name that matches the gate configuration
-          # If TARGET_STAGE is "QA", convert it to "btcwallet-QA" to match the gate
-          if [ "${{ env.TARGET_STAGE }}" == "QA" ]; then
+          CURRENT_STAGE="${{ steps.get_app_ver.outputs.current_stage }}"
+          TARGET_STAGE="${{ env.TARGET_STAGE }}"
+          
+          echo "📋 Creating gate certification evidence before promotion..."
+          echo "Current stage (source): $CURRENT_STAGE"
+          echo "Target stage: $TARGET_STAGE"
+          
+          # Exit gates are checked when EXITING a stage, so we need evidence for the SOURCE stage
+          # Map stage names to match gate configuration
+          if [ "$CURRENT_STAGE" == "QA" ] || [ "$CURRENT_STAGE" == "btcwallet-QA" ]; then
             STAGE="btcwallet-QA"
+          elif [ "$CURRENT_STAGE" == "PreProd" ] || [ "$CURRENT_STAGE" == "PREPROD" ] || [ "$CURRENT_STAGE" == "btcwallet-PreProd" ]; then
+            STAGE="btcwallet-PreProd"
+          elif [ "$CURRENT_STAGE" == "DEV" ]; then
+            # DEV stage - check if we're promoting to QA, then we need QA exit gate evidence
+            # Actually, exit gates check when EXITING, so if promoting FROM DEV TO QA,
+            # we need DEV exit gate evidence (if it exists) or the target stage's entry requirements
+            # Based on the error, it seems we need evidence for the stage we're entering (QA)
+            if [ "$TARGET_STAGE" == "QA" ]; then
+              STAGE="btcwallet-QA"
+            else
+              STAGE="$CURRENT_STAGE"
+            fi
           else
-            STAGE="${{ env.TARGET_STAGE }}"
+            STAGE="$CURRENT_STAGE"
           fi
+          
+          echo "Using stage name for evidence: $STAGE"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           echo "Using stage name: $STAGE (from TARGET_STAGE: ${{ env.TARGET_STAGE }})"
