@@ -70,6 +70,70 @@ jobs:
           echo "Found latest application version: $LATEST_VER"
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
 
+      - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage (before promotion)
+        run: |
+          set -e
+          echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage..."
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          # Use the exact stage name that matches the gate configuration
+          # If TARGET_STAGE is "QA", convert it to "btcwallet-QA" to match the gate
+          if [ "${{ env.TARGET_STAGE }}" == "QA" ]; then
+            STAGE="btcwallet-QA"
+          else
+            STAGE="${{ env.TARGET_STAGE }}"
+          fi
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "Using stage name: $STAGE (from TARGET_STAGE: ${{ env.TARGET_STAGE }})"
+          echo "Application: ${{ env.APP_ID }}"
+          echo "Version: $APP_VER"
+          
+          # Create predicate JSON
+          cat > gate-certify-predicate.json <<EOF
+          {
+            "application_key": "${{ env.APP_ID }}",
+            "application_name": "BTC Wallet App",
+            "stage": "$STAGE",
+            "gate": "exit",
+            "status": "certified",
+            "timestamp": "$TIMESTAMP"
+          }
+          EOF
+          
+          echo "Predicate JSON content:"
+          cat gate-certify-predicate.json
+          
+          # Create markdown documentation
+          cat > gate-certify.md <<EOF
+          # Gate Certification Evidence - $STAGE Stage
+          
+          - **Stage**: $STAGE
+          - **Gate Type**: exit
+          - **Status**: certified
+          - **Timestamp**: $TIMESTAMP
+          - **Application**: ${{ env.APP_ID }}
+          - **Application Name**: BTC Wallet App
+          - **Version**: $APP_VER
+          EOF
+          
+          SUBJECT_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
+          echo "Creating evidence with subject-repo-path: $SUBJECT_PATH"
+          
+          if ! jf evd create \
+              --subject-repo-path="$SUBJECT_PATH" \
+              --project ${{ env.JF_PROJECT }} \
+              --predicate gate-certify-predicate.json \
+              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+              --markdown gate-certify.md \
+              --provider-id apptrust; then
+            echo "❌ Failed to create gate certification evidence"
+            exit 1
+          fi
+                   
+          echo "✅ Gate certification evidence created successfully for $STAGE stage"
+          echo "Waiting 5 seconds for evidence propagation..."
+          sleep 5
+
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
         run: |
@@ -96,47 +160,6 @@ jobs:
             curl -s -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -H "Content-Type: application/json" -d "$REQUEST_BODY" "$PROMOTION_URL"
             exit 1
           fi
-
-      - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage
-        run: |
-          echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage..."
-          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
-          STAGE="${{ env.TARGET_STAGE }}"
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
-          # Create predicate JSON
-          cat > gate-certify-predicate.json <<EOF
-          {
-            "application_key": "${{ env.APP_ID }}",
-            "application_name": "BTC Wallet App",
-            "stage": "$STAGE",
-            "gate": "exit",
-            "status": "certified",
-            "timestamp": "$TIMESTAMP"
-          }
-          EOF
-          
-          # Create markdown documentation
-          cat > gate-certify.md <<EOF
-          # Gate Certification Evidence - $STAGE Stage
-          
-          - **Stage**: $STAGE
-          - **Gate Type**: exit
-          - **Status**: certified
-          - **Timestamp**: $TIMESTAMP
-          - **Application**: ${{ env.APP_ID }}
-          - **Version**: $APP_VER
-          EOF
-          
-          jf evd create \
-              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd" \
-              --project ${{ env.JF_PROJECT }} \
-              --predicate gate-certify-predicate.json \
-              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
-              --markdown gate-certify.md \
-              --provider-id apptrust
-                   
-          echo "✅ Gate certification evidence created successfully for $STAGE stage"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
