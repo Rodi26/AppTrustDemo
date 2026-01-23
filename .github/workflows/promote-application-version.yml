@@ -17,7 +17,10 @@ jobs:
       JF_URL: ${{ vars.JF_URL }}
       # JF_USER: ${{ vars.JF_USER }}
       # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-      APP_ID: ${{ vars.APPLICATION_NAME }}
+      # AppTrust application identifier (a.k.a. application key / slug). Must match the key used in AppTrust APIs.
+      APP_ID: ${{ vars.APPLICATION_KEY }}
+      # Human-readable name (optional, used only for docs/predicate readability)
+      APP_DISPLAY_NAME: ${{ vars.APPLICATION_NAME }}
       TARGET_STAGE: ${{ vars.TARGET_STAGE }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
@@ -104,7 +107,7 @@ jobs:
         env:
           JFROG_CLI_BUILD_PROJECT: ${{ env.JF_PROJECT }}
         run: |
-          set -e
+          set -euo pipefail
           echo "📋 Creating gate certification evidence for DEV stage before promotion..."
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           STAGE="DEV"
@@ -121,7 +124,7 @@ jobs:
           cat > gate-certify-predicate-dev.json <<EOF
           {
             "application_key": "${{ env.APP_ID }}",
-            "application_name": "BTC Wallet App",
+            "application_name": "${{ env.APP_DISPLAY_NAME }}",
             "stage": "$STAGE",
             "gate": "exit",
             "status": "certified",
@@ -141,7 +144,7 @@ jobs:
           - **Status**: certified
           - **Timestamp**: $TIMESTAMP
           - **Application**: ${{ env.APP_ID }}
-          - **Application Name**: BTC Wallet App
+          - **Application Name**: ${{ env.APP_DISPLAY_NAME }}
           - **Version**: $APP_VER
           EOF
           
@@ -185,7 +188,7 @@ jobs:
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
         run: |
-          set -e
+          set -euo pipefail
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           CURRENT_STAGE="${{ steps.get_app_ver.outputs.current_stage }}"
           REQUEST_BODY="{\"target_stage\":\"$TARGET_STAGE\"}"
@@ -237,7 +240,7 @@ jobs:
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage (after promotion)
         if: success() && steps.promote_step.outcome == 'success'
         run: |
-          set -e
+          set -euo pipefail
           echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage after successful promotion..."
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           TARGET_STAGE="${{ env.TARGET_STAGE }}"
@@ -261,7 +264,7 @@ jobs:
           cat > gate-certify-predicate.json <<EOF
           {
             "application_key": "${{ env.APP_ID }}",
-            "application_name": "BTC Wallet App",
+            "application_name": "${{ env.APP_DISPLAY_NAME }}",
             "stage": "$STAGE",
             "gate": "exit",
             "status": "certified",
@@ -281,7 +284,7 @@ jobs:
           - **Status**: certified
           - **Timestamp**: $TIMESTAMP
           - **Application**: ${{ env.APP_ID }}
-          - **Application Name**: BTC Wallet App
+          - **Application Name**: ${{ env.APP_DISPLAY_NAME }}
           - **Version**: $APP_VER
           EOF
           
