@@ -99,6 +99,7 @@ jobs:
 
           echo "Found latest application version: $LATEST_VER"
           echo "Current stage: $CURRENT_STAGE"
+
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
           echo "current_stage=$CURRENT_STAGE" >> $GITHUB_OUTPUT
 
