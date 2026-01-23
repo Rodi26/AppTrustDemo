@@ -240,8 +240,8 @@ jobs:
 
           # Use REST API directly to avoid CLI bug with double /apptrust/apptrust/ path
           # The CLI has a bug that adds /apptrust twice, so we use curl directly
-          # Try the general evidence endpoint with application/version in the subject
-          EVIDENCE_API_URL="$JF_URL/apptrust/api/v1/evidence"
+          # Use Artifactory evidence API endpoint (evidence service is part of Artifactory)
+          EVIDENCE_API_URL="$JF_URL/artifactory/api/evidence"
           
           echo "Creating evidence via REST API: $EVIDENCE_API_URL"
           
@@ -393,8 +393,8 @@ jobs:
 
           # Use REST API directly to avoid CLI bug with double /apptrust/apptrust/ path
           # The CLI has a bug that adds /apptrust twice, so we use curl directly
-          # Try the general evidence endpoint with application/version in the subject
-          EVIDENCE_API_URL="$JF_URL/apptrust/api/v1/evidence"
+          # Use Artifactory evidence API endpoint (evidence service is part of Artifactory)
+          EVIDENCE_API_URL="$JF_URL/artifactory/api/evidence"
           
           echo "Creating evidence via REST API: $EVIDENCE_API_URL"
           
