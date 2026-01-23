@@ -134,14 +134,23 @@ jobs:
               --provider-id apptrust
                    
           echo "✅ Gate certification evidence created successfully for $STAGE stage"
+          
+          # Write evidence path to attestation paths file for automatic evidence collection
+          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
+          ATTESTATION_PATHS_FILE="/home/runner/work/_temp/created_attestation_paths.txt"
+          mkdir -p "$(dirname "$ATTESTATION_PATHS_FILE")"
+          echo "$EVIDENCE_PATH" >> "$ATTESTATION_PATHS_FILE"
+          echo "📝 Written evidence path to attestation paths file: $EVIDENCE_PATH"
 
       - name: Create evidence for Release Approval (simulate SNOW)
         run: |
           echo "📋 Creating evidence for Release Approval (SNOW)..."
           cd snow
 
+          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd"
+          
           jf evd create \
-              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd" \
+              --subject-repo-path="$EVIDENCE_PATH" \
               --project ${{ env.JF_PROJECT }} \
               --predicate approval.json \
               --predicate-type https://servicenow.com/approval/v1 \
@@ -149,3 +158,9 @@ jobs:
               --provider-id servicenow
                    
           echo "✅ Evidence created successfully"
+          
+          # Write evidence path to attestation paths file for automatic evidence collection
+          ATTESTATION_PATHS_FILE="/home/runner/work/_temp/created_attestation_paths.txt"
+          mkdir -p "$(dirname "$ATTESTATION_PATHS_FILE")"
+          echo "$EVIDENCE_PATH" >> "$ATTESTATION_PATHS_FILE"
+          echo "📝 Written evidence path to attestation paths file: $EVIDENCE_PATH"

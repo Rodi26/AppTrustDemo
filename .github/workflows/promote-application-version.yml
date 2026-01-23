@@ -148,7 +148,10 @@ jobs:
           # Create evidence using CLI - explicitly attach to application version
           # Add verbose flag to diagnose API calls and ensure project context is set
           echo "Attempting to create evidence with verbose logging..."
-          if ! jf evd create \
+          EVIDENCE_CREATED=false
+          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
+          
+          if jf evd create \
               --verbose \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
@@ -157,6 +160,7 @@ jobs:
               --markdown gate-certify-dev.md \
               --provider-id apptrust 2>&1 | tee evd-create-output.log; then
             echo "✅ DEV gate certification evidence created successfully"
+            EVIDENCE_CREATED=true
           else
             echo "❌ Failed to create DEV gate certification evidence"
             echo "Evidence creation output:"
@@ -173,10 +177,19 @@ jobs:
                 --markdown gate-certify-dev.md \
                 --provider-id apptrust; then
               echo "✅ DEV gate certification evidence created successfully using fallback method"
+              EVIDENCE_CREATED=true
             else
               echo "❌ Fallback method also failed"
               exit 1
             fi
+          fi
+          
+          # Write evidence path to attestation paths file for automatic evidence collection
+          if [ "$EVIDENCE_CREATED" = true ]; then
+            ATTESTATION_PATHS_FILE="/home/runner/work/_temp/created_attestation_paths.txt"
+            mkdir -p "$(dirname "$ATTESTATION_PATHS_FILE")"
+            echo "$EVIDENCE_PATH" >> "$ATTESTATION_PATHS_FILE"
+            echo "📝 Written evidence path to attestation paths file: $EVIDENCE_PATH"
           fi
 
       - name: Promote application to ${{ env.TARGET_STAGE }}
@@ -296,6 +309,13 @@ jobs:
           fi
           
           echo "✅ Gate certification evidence created successfully for $STAGE stage"
+          
+          # Write evidence path to attestation paths file for automatic evidence collection
+          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
+          ATTESTATION_PATHS_FILE="/home/runner/work/_temp/created_attestation_paths.txt"
+          mkdir -p "$(dirname "$ATTESTATION_PATHS_FILE")"
+          echo "$EVIDENCE_PATH" >> "$ATTESTATION_PATHS_FILE"
+          echo "📝 Written evidence path to attestation paths file: $EVIDENCE_PATH"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -457,8 +477,10 @@ jobs:
           echo "📋 Creating evidence from test results..."
           cd e2e-tests
 
+          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd"
+          
           jf evd create \
-              --subject-repo-path="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd" \
+              --subject-repo-path="$EVIDENCE_PATH" \
               --project ${{ env.JF_PROJECT }} \
               --predicate test-report.json \
               --predicate-type https://cypress.io/evidence/e2e/v1 \
@@ -466,3 +488,9 @@ jobs:
               --provider-id cypress
                    
           echo "✅ Evidence created successfully"
+          
+          # Write evidence path to attestation paths file for automatic evidence collection
+          ATTESTATION_PATHS_FILE="/home/runner/work/_temp/created_attestation_paths.txt"
+          mkdir -p "$(dirname "$ATTESTATION_PATHS_FILE")"
+          echo "$EVIDENCE_PATH" >> "$ATTESTATION_PATHS_FILE"
+          echo "📝 Written evidence path to attestation paths file: $EVIDENCE_PATH"
