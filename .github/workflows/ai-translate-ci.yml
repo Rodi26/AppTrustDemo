@@ -121,33 +121,8 @@ jobs:
         echo "🔍 Verifying Docker image..."
         docker pull ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         docker images ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
-
-    - name: Run Grype scan
-      id: grype
-      uses: anchore/scan-action@v6
-      with:
-        image: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
-        fail-build: false
-        output-format: cyclonedx-json
-        output-file: grype-output.json
-        severity-cutoff: "critical"
-        cache-db: true
-
-    - name: Create evidence from Grype scan result
-      run: |
-        echo "📋 Creating vulnerability evidence from Grype scan..."
-        if [ ! -f "grype-output.json" ]; then
-          echo "⚠️  Grype output file not found, skipping evidence creation"
-          exit 0
-        fi
-        echo "Grype scan results found, creating evidence..."
-        jf evd create \
-          --subject-repo-path ${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}/${{ github.run_number }}/list.manifest.json \
-          --project ${{ env.JF_PROJECT }} \
-          --predicate grype-output.json \
-          --provider-id anchore \
-          --predicate-type https://anchore.com/evidence/grype/v1
-        echo "✅ Vulnerability evidence created successfully"
+        echo "✅ Docker image verified"
+        echo "ℹ️  Note: JFrog Platform automatically generates CycloneDX SBOMs and performs vulnerability scans when Docker images are pushed to Artifactory."
 
     - name: Publish buildinfo
       id: publish_build
