@@ -103,7 +103,7 @@ jobs:
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
           echo "current_stage=$CURRENT_STAGE" >> $GITHUB_OUTPUT
 
-      - name: Preflight: verify AppTrust application object is reachable
+      - name: Preflight verify AppTrust application object is reachable
         run: |
           set -euo pipefail
           APP_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID"
