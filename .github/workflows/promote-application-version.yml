@@ -226,7 +226,11 @@ jobs:
           # Enable debug to show the exact API calls the CLI makes (helps troubleshoot 404s)
           export JFROG_CLI_LOG_LEVEL=DEBUG
 
+          # Get the normalized server-id to ensure correct URL base (without /apptrust suffix)
+          SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
+
           if ! jf evd create \
+              --server-id "$SERVER_ID" \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
               --predicate gate-certify-predicate-dev.json \
@@ -347,7 +351,11 @@ jobs:
           # Create evidence using CLI (must attach to AppTrust application/version)
           export JFROG_CLI_LOG_LEVEL=DEBUG
 
+          # Get the normalized server-id to ensure correct URL base (without /apptrust suffix)
+          SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
+
           if ! jf evd create \
+              --server-id "$SERVER_ID" \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
               --predicate gate-certify-predicate.json \
