@@ -102,6 +102,29 @@ jobs:
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
           echo "current_stage=$CURRENT_STAGE" >> $GITHUB_OUTPUT
 
+      - name: Preflight: verify AppTrust application object is reachable
+        run: |
+          set -euo pipefail
+          APP_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID"
+          echo "Checking AppTrust application details: $APP_DETAILS_URL"
+
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            "$APP_DETAILS_URL")
+
+          if [ "$STATUS_CODE" != "200" ]; then
+            echo "❌ AppTrust application object is not reachable (HTTP $STATUS_CODE). Evidence cannot be attached to application/version until this is fixed." >&2
+            echo "URL: $APP_DETAILS_URL" >&2
+            echo "Response body:" >&2
+            cat "$RESPONSE_FILE" >&2
+            rm -f "$RESPONSE_FILE"
+            exit 1
+          fi
+
+          echo "✅ AppTrust application object reachable."
+          rm -f "$RESPONSE_FILE"
+
       - name: Create gate certification evidence for DEV stage (before promotion)
         if: steps.get_app_ver.outputs.current_stage == 'DEV'
         env:
@@ -147,43 +170,27 @@ jobs:
           - **Application Name**: ${{ env.APP_DISPLAY_NAME }}
           - **Version**: $APP_VER
           EOF
-          
-          # Create evidence using CLI - explicitly attach to application version
-          echo "Attempting to create evidence..."
-          EVIDENCE_CREATED=false
-          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
-          
-          if jf evd create \
+
+          echo "Attempting to create evidence (must attach to AppTrust application/version)..."
+
+          # Enable debug to show the exact API calls the CLI makes (helps troubleshoot 404s)
+          export JFROG_CLI_LOG_LEVEL=DEBUG
+
+          if ! jf evd create \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
+              --project ${{ env.JF_PROJECT }} \
               --predicate gate-certify-predicate-dev.json \
               --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
               --markdown gate-certify-dev.md \
               --provider-id apptrust 2>&1 | tee evd-create-output.log; then
-            echo "✅ DEV gate certification evidence created successfully"
-            EVIDENCE_CREATED=true
-          else
-            echo "❌ Failed to create DEV gate certification evidence"
-            echo "Evidence creation output:"
-            cat evd-create-output.log || true
-            echo ""
-            echo "Attempting fallback: using subject-repo-path approach..."
-            # Fallback: try using subject-repo-path pointing to release bundle
-            RELEASE_BUNDLE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
-            if jf evd create \
-                --subject-repo-path "$RELEASE_BUNDLE_PATH" \
-                --project ${{ env.JF_PROJECT }} \
-                --predicate gate-certify-predicate-dev.json \
-                --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
-                --markdown gate-certify-dev.md \
-                --provider-id apptrust; then
-              echo "✅ DEV gate certification evidence created successfully using fallback method"
-              EVIDENCE_CREATED=true
-            else
-              echo "❌ Fallback method also failed"
-              exit 1
-            fi
+            echo "❌ Failed to create DEV gate certification evidence attached to application/version" >&2
+            echo "Evidence creation output:" >&2
+            cat evd-create-output.log >&2 || true
+            exit 1
           fi
+
+          echo "✅ DEV gate certification evidence created successfully (attached to application/version)"
 
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
@@ -287,21 +294,25 @@ jobs:
           - **Application Name**: ${{ env.APP_DISPLAY_NAME }}
           - **Version**: $APP_VER
           EOF
-          
-          # Create evidence using CLI - explicitly attach to application version
-          # Using --application-key and --application-version ensures the evidence is properly assigned
+
+          # Create evidence using CLI (must attach to AppTrust application/version)
+          export JFROG_CLI_LOG_LEVEL=DEBUG
+
           if ! jf evd create \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
+              --project ${{ env.JF_PROJECT }} \
               --predicate gate-certify-predicate.json \
               --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
               --markdown gate-certify.md \
-              --provider-id apptrust; then
-            echo "❌ Failed to create gate certification evidence"
+              --provider-id apptrust 2>&1 | tee evd-create-output.log; then
+            echo "❌ Failed to create gate certification evidence attached to application/version" >&2
+            echo "Evidence creation output:" >&2
+            cat evd-create-output.log >&2 || true
             exit 1
           fi
-          
-          echo "✅ Gate certification evidence created successfully for $STAGE stage"
+
+          echo "✅ Gate certification evidence created successfully for $STAGE stage (attached to application/version)"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
