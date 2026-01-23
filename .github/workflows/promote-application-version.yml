@@ -238,25 +238,52 @@ jobs:
 
           echo "Attempting to create evidence (must attach to AppTrust application/version)..."
 
-          # Enable debug to show the exact API calls the CLI makes (helps troubleshoot 404s)
-          export JFROG_CLI_LOG_LEVEL=DEBUG
-
-          # Get the normalized server-id to ensure correct URL base (without /apptrust suffix)
-          SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
-
-          if ! jf evd create \
-              --server-id "$SERVER_ID" \
-              --application-key "${{ env.APP_ID }}" \
-              --application-version "$APP_VER" \
-              --predicate gate-certify-predicate-dev.json \
-              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
-              --markdown gate-certify-dev.md \
-              --provider-id apptrust 2>&1 | tee evd-create-output.log; then
-            echo "❌ Failed to create DEV gate certification evidence attached to application/version" >&2
-            echo "Evidence creation output:" >&2
-            cat evd-create-output.log >&2 || true
+          # Use REST API directly to avoid CLI bug with double /apptrust/apptrust/ path
+          # The CLI has a bug that adds /apptrust twice, so we use curl directly
+          EVIDENCE_API_URL="$JF_URL/apptrust/api/v1/applications/${{ env.APP_ID }}/versions/$APP_VER/evidence"
+          
+          echo "Creating evidence via REST API: $EVIDENCE_API_URL"
+          
+          # Read markdown content for the evidence body
+          MARKDOWN_CONTENT=$(cat gate-certify-dev.md)
+          PREDICATE_CONTENT=$(cat gate-certify-predicate-dev.json)
+          
+          # Create evidence payload
+          cat > evidence-payload.json <<EOF
+          {
+            "predicate": $PREDICATE_CONTENT,
+            "predicateType": "https://jfrog.com/evidence/apptrust/gate-certify/v1",
+            "markdown": $(echo "$MARKDOWN_CONTENT" | jq -Rs .),
+            "providerId": "apptrust",
+            "subject": {
+              "applicationKey": "${{ env.APP_ID }}",
+              "applicationVersion": "$APP_VER"
+            }
+          }
+          EOF
+          
+          echo "Evidence payload:"
+          cat evidence-payload.json | jq .
+          
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            -H "Content-Type: application/json" \
+            -d @evidence-payload.json \
+            "$EVIDENCE_API_URL")
+          
+          if [ "$STATUS_CODE" != "200" ] && [ "$STATUS_CODE" != "201" ]; then
+            echo "❌ Failed to create DEV gate certification evidence. HTTP $STATUS_CODE" >&2
+            echo "URL: $EVIDENCE_API_URL" >&2
+            echo "Response body:" >&2
+            cat "$RESPONSE_FILE" >&2
+            rm -f "$RESPONSE_FILE" evidence-payload.json
             exit 1
           fi
+          
+          echo "Response:"
+          cat "$RESPONSE_FILE" | jq . || cat "$RESPONSE_FILE"
+          rm -f "$RESPONSE_FILE" evidence-payload.json
 
           echo "✅ DEV gate certification evidence created successfully (attached to application/version)"
 
@@ -363,25 +390,52 @@ jobs:
           - **Version**: $APP_VER
           EOF
 
-          # Create evidence using CLI (must attach to AppTrust application/version)
-          export JFROG_CLI_LOG_LEVEL=DEBUG
-
-          # Get the normalized server-id to ensure correct URL base (without /apptrust suffix)
-          SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
-
-          if ! jf evd create \
-              --server-id "$SERVER_ID" \
-              --application-key "${{ env.APP_ID }}" \
-              --application-version "$APP_VER" \
-              --predicate gate-certify-predicate.json \
-              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
-              --markdown gate-certify.md \
-              --provider-id apptrust 2>&1 | tee evd-create-output.log; then
-            echo "❌ Failed to create gate certification evidence attached to application/version" >&2
-            echo "Evidence creation output:" >&2
-            cat evd-create-output.log >&2 || true
+          # Use REST API directly to avoid CLI bug with double /apptrust/apptrust/ path
+          # The CLI has a bug that adds /apptrust twice, so we use curl directly
+          EVIDENCE_API_URL="$JF_URL/apptrust/api/v1/applications/${{ env.APP_ID }}/versions/$APP_VER/evidence"
+          
+          echo "Creating evidence via REST API: $EVIDENCE_API_URL"
+          
+          # Read markdown content for the evidence body
+          MARKDOWN_CONTENT=$(cat gate-certify.md)
+          PREDICATE_CONTENT=$(cat gate-certify-predicate.json)
+          
+          # Create evidence payload
+          cat > evidence-payload.json <<EOF
+          {
+            "predicate": $PREDICATE_CONTENT,
+            "predicateType": "https://jfrog.com/evidence/apptrust/gate-certify/v1",
+            "markdown": $(echo "$MARKDOWN_CONTENT" | jq -Rs .),
+            "providerId": "apptrust",
+            "subject": {
+              "applicationKey": "${{ env.APP_ID }}",
+              "applicationVersion": "$APP_VER"
+            }
+          }
+          EOF
+          
+          echo "Evidence payload:"
+          cat evidence-payload.json | jq .
+          
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            -H "Content-Type: application/json" \
+            -d @evidence-payload.json \
+            "$EVIDENCE_API_URL")
+          
+          if [ "$STATUS_CODE" != "200" ] && [ "$STATUS_CODE" != "201" ]; then
+            echo "❌ Failed to create gate certification evidence. HTTP $STATUS_CODE" >&2
+            echo "URL: $EVIDENCE_API_URL" >&2
+            echo "Response body:" >&2
+            cat "$RESPONSE_FILE" >&2
+            rm -f "$RESPONSE_FILE" evidence-payload.json
             exit 1
           fi
+          
+          echo "Response:"
+          cat "$RESPONSE_FILE" | jq . || cat "$RESPONSE_FILE"
+          rm -f "$RESPONSE_FILE" evidence-payload.json
 
           echo "✅ Gate certification evidence created successfully for $STAGE stage (attached to application/version)"
 
