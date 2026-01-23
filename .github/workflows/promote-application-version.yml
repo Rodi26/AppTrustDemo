@@ -84,45 +84,12 @@ jobs:
           # The API returns an array 'versions', so we get the first element.
           LATEST_VER=$(echo "$RESPONSE" | jq -r '.versions[0].version')
 
+          # Extract current stage directly from the versions list response (avoids GET /versions/{version} which can return 405)
+          CURRENT_STAGE=$(echo "$RESPONSE" | jq -r '.versions[0].current_stage // .versions[0].stage // .versions[0].stages[0] // "DEV"' 2>/dev/null || echo "DEV")
+
           if [ "$LATEST_VER" == "null" ] || [ -z "$LATEST_VER" ]; then
             echo "Error: Could not retrieve a valid application version."
             exit 1
-          fi
-
-          # Get the current stage from the version details
-          VERSION_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$LATEST_VER"
-          echo "Fetching version details from: $VERSION_DETAILS_URL"
-
-          VERSION_RESPONSE_FILE=$(mktemp)
-          VERSION_STATUS_CODE=$(curl -s -o "$VERSION_RESPONSE_FILE" -w "%{http_code}" -X GET \
-            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
-            "$VERSION_DETAILS_URL")
-
-          if [ "$VERSION_STATUS_CODE" != "200" ]; then
-            echo "⚠️  Failed to fetch version details. HTTP $VERSION_STATUS_CODE. Defaulting stage to DEV." >&2
-            echo "URL: $VERSION_DETAILS_URL" >&2
-            echo "Response body (first 500 chars):" >&2
-            head -c 500 "$VERSION_RESPONSE_FILE" >&2
-            echo "" >&2
-            VERSION_RESPONSE=""
-            CURRENT_STAGE="DEV"
-          else
-            VERSION_RESPONSE=$(cat "$VERSION_RESPONSE_FILE")
-          fi
-          rm -f "$VERSION_RESPONSE_FILE"
-
-          echo "Version details response (first 500 chars):"
-          echo "$VERSION_RESPONSE" | head -c 500
-          echo ""
-
-          # Check if response is valid JSON before parsing
-          if [ -n "$VERSION_RESPONSE" ] && echo "$VERSION_RESPONSE" | jq . >/dev/null 2>&1; then
-            echo "Version details response is valid JSON"
-            # Try to extract current_stage, default to DEV if not found
-            CURRENT_STAGE=$(echo "$VERSION_RESPONSE" | jq -r '.current_stage // .stage // .stages[0] // "DEV"' 2>/dev/null || echo "DEV")
-          else
-            echo "Warning: Version details response is not valid JSON, defaulting to DEV"
-            CURRENT_STAGE="DEV"
           fi
 
           # If still empty or null, default to DEV
