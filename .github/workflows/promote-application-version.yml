@@ -18,9 +18,10 @@ jobs:
       # JF_USER: ${{ vars.JF_USER }}
       # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       # AppTrust application identifier (a.k.a. application key / slug). Must match the key used in AppTrust APIs.
-      APP_ID: ${{ vars.APPLICATION_KEY }}
+      # Backward-compatible fallback: if APPLICATION_KEY is not set, use APPLICATION_NAME.
+      APP_ID: ${{ vars.APPLICATION_KEY || vars.APPLICATION_NAME }}
       # Human-readable name (optional, used only for docs/predicate readability)
-      APP_DISPLAY_NAME: ${{ vars.APPLICATION_NAME }}
+      APP_DISPLAY_NAME: ${{ vars.APPLICATION_DISPLAY_NAME || vars.APPLICATION_NAME }}
       TARGET_STAGE: ${{ vars.TARGET_STAGE }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
@@ -54,36 +55,68 @@ jobs:
           # Use the API to get the latest version.
           # We use limit=1 and order_by=created to get the most recent version.
           API_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?order_by=created&limit=1"
-          
+
+          if [ -z "${APP_ID:-}" ]; then
+            echo "❌ APP_ID is empty. Please set GitHub variable APPLICATION_KEY (recommended) or ensure APPLICATION_NAME contains the AppTrust application key." >&2
+            exit 1
+          fi
+
           echo "Fetching latest application version from: $API_URL"
-          
-          RESPONSE=$(curl -s -X GET \
+
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X GET \
             -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
             "$API_URL")
-          
+
+          if [ "$STATUS_CODE" != "200" ]; then
+            echo "❌ Failed to fetch latest application version. HTTP $STATUS_CODE" >&2
+            echo "URL: $API_URL" >&2
+            echo "Response body:" >&2
+            cat "$RESPONSE_FILE" >&2
+            rm -f "$RESPONSE_FILE"
+            exit 1
+          fi
+
+          RESPONSE=$(cat "$RESPONSE_FILE")
+          rm -f "$RESPONSE_FILE"
+
           # Use jq to parse the JSON and extract the version.
           # The API returns an array 'versions', so we get the first element.
           LATEST_VER=$(echo "$RESPONSE" | jq -r '.versions[0].version')
-          
+
           if [ "$LATEST_VER" == "null" ] || [ -z "$LATEST_VER" ]; then
             echo "Error: Could not retrieve a valid application version."
             exit 1
           fi
-          
+
           # Get the current stage from the version details
           VERSION_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$LATEST_VER"
           echo "Fetching version details from: $VERSION_DETAILS_URL"
-          
-          VERSION_RESPONSE=$(curl -s -X GET \
+
+          VERSION_RESPONSE_FILE=$(mktemp)
+          VERSION_STATUS_CODE=$(curl -s -o "$VERSION_RESPONSE_FILE" -w "%{http_code}" -X GET \
             -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
             "$VERSION_DETAILS_URL")
-          
+
+          if [ "$VERSION_STATUS_CODE" != "200" ]; then
+            echo "⚠️  Failed to fetch version details. HTTP $VERSION_STATUS_CODE. Defaulting stage to DEV." >&2
+            echo "URL: $VERSION_DETAILS_URL" >&2
+            echo "Response body (first 500 chars):" >&2
+            head -c 500 "$VERSION_RESPONSE_FILE" >&2
+            echo "" >&2
+            VERSION_RESPONSE=""
+            CURRENT_STAGE="DEV"
+          else
+            VERSION_RESPONSE=$(cat "$VERSION_RESPONSE_FILE")
+          fi
+          rm -f "$VERSION_RESPONSE_FILE"
+
           echo "Version details response (first 500 chars):"
           echo "$VERSION_RESPONSE" | head -c 500
           echo ""
-          
+
           # Check if response is valid JSON before parsing
-          if echo "$VERSION_RESPONSE" | jq . >/dev/null 2>&1; then
+          if [ -n "$VERSION_RESPONSE" ] && echo "$VERSION_RESPONSE" | jq . >/dev/null 2>&1; then
             echo "Version details response is valid JSON"
             # Try to extract current_stage, default to DEV if not found
             CURRENT_STAGE=$(echo "$VERSION_RESPONSE" | jq -r '.current_stage // .stage // .stages[0] // "DEV"' 2>/dev/null || echo "DEV")
@@ -91,12 +124,12 @@ jobs:
             echo "Warning: Version details response is not valid JSON, defaulting to DEV"
             CURRENT_STAGE="DEV"
           fi
-          
+
           # If still empty or null, default to DEV
           if [ "$CURRENT_STAGE" == "null" ] || [ -z "$CURRENT_STAGE" ]; then
             CURRENT_STAGE="DEV"
           fi
-          
+
           echo "Found latest application version: $LATEST_VER"
           echo "Current stage: $CURRENT_STAGE"
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
