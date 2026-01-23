@@ -48,6 +48,32 @@ jobs:
           JF_URL: ${{ vars.JF_URL }}
           # JF_USER: ${{ vars.JF_USER }}
           # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
+      - name: Normalize JFrog CLI base URL for AppTrust
+        run: |
+          set -euo pipefail
+
+          # Show current config and extract the configured platform URL
+          CFG_URL=$(jf c show setup-jfrog-cli-server --json | jq -r '.url')
+          echo "JFrog CLI configured url: $CFG_URL"
+
+          # If the configured URL ends with /apptrust, strip it. Otherwise keep as-is.
+          if [[ "$CFG_URL" == */apptrust ]]; then
+            BASE_URL="${CFG_URL%/apptrust}"
+            echo "Detected url ending with /apptrust. Normalizing to: $BASE_URL"
+
+            jf c add setup-jfrog-cli-server \
+              --url "$BASE_URL" \
+              --access-token "${{ steps.setup-cli.outputs.oidc-token }}" \
+              --interactive=false \
+              --overwrite=true
+          else
+            echo "No normalization needed."
+          fi
+
+          # Reprint final config URL
+          FINAL_URL=$(jf c show setup-jfrog-cli-server --json | jq -r '.url')
+          echo "JFrog CLI final url: $FINAL_URL"
           
       - name: Get latest application version
         id: get_app_ver
