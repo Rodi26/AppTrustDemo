@@ -99,16 +99,78 @@ jobs:
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
           echo "current_stage=$CURRENT_STAGE" >> $GITHUB_OUTPUT
 
+      - name: Create gate certification evidence for DEV stage (before promotion)
+        if: steps.get_app_ver.outputs.current_stage == 'DEV'
+        run: |
+          set -e
+          echo "📋 Creating gate certification evidence for DEV stage before promotion..."
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          STAGE="DEV"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "Creating DEV exit gate evidence for:"
+          echo "  Application: ${{ env.APP_ID }}"
+          echo "  Version: $APP_VER"
+          echo "  Stage: $STAGE"
+          echo "  Timestamp: $TIMESTAMP"
+          
+          # Create predicate JSON
+          cat > gate-certify-predicate-dev.json <<EOF
+          {
+            "application_key": "${{ env.APP_ID }}",
+            "application_name": "BTC Wallet App",
+            "stage": "$STAGE",
+            "gate": "exit",
+            "status": "certified",
+            "timestamp": "$TIMESTAMP"
+          }
+          EOF
+          
+          echo "Predicate JSON content:"
+          cat gate-certify-predicate-dev.json
+          
+          # Create markdown documentation
+          cat > gate-certify-dev.md <<EOF
+          # Gate Certification Evidence - DEV Stage
+          
+          - **Stage**: $STAGE
+          - **Gate Type**: exit
+          - **Status**: certified
+          - **Timestamp**: $TIMESTAMP
+          - **Application**: ${{ env.APP_ID }}
+          - **Application Name**: BTC Wallet App
+          - **Version**: $APP_VER
+          EOF
+          
+          # Create evidence using CLI - explicitly attach to application version
+          if ! jf evd create \
+              --application-key "${{ env.APP_ID }}" \
+              --application-version "$APP_VER" \
+              --predicate gate-certify-predicate-dev.json \
+              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+              --markdown gate-certify-dev.md \
+              --provider-id apptrust; then
+            echo "❌ Failed to create DEV gate certification evidence"
+            exit 1
+          fi
+          
+          echo "✅ DEV gate certification evidence created successfully"
+
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
         run: |
+          set -e
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          CURRENT_STAGE="${{ steps.get_app_ver.outputs.current_stage }}"
           REQUEST_BODY="{\"target_stage\":\"$TARGET_STAGE\"}"
           
           PROMOTION_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/promote"
-          echo "Promoting application '$APP_ID' version $APP_VER to stage $TARGET_STAGE..."
+          echo "Promoting application '$APP_ID' version $APP_VER from stage '$CURRENT_STAGE' to stage '$TARGET_STAGE'..."
+          echo "Promotion URL: $PROMOTION_URL"
           
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+          # Capture full response for better error diagnostics
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
             -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
             -H "Content-Type: application/json" \
             -d "$REQUEST_BODY" \
@@ -118,15 +180,36 @@ jobs:
           
           # The API returns 200, 201, or 202 on success, depending on the promotion process.
           if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -le 202 ]]; then
-            echo "Successfully promoted $APP_ID version $APP_VER to $TARGET_STAGE."
+            echo "✅ Successfully promoted $APP_ID version $APP_VER to $TARGET_STAGE."
+            cat "$RESPONSE_FILE"
+            rm "$RESPONSE_FILE"
           else
-            echo "Failed to promote application. HTTP status code: $STATUS_CODE"
-            # Run again to see output
-            curl -s -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -H "Content-Type: application/json" -d "$REQUEST_BODY" "$PROMOTION_URL"
+            echo "❌ Failed to promote application. HTTP status code: $STATUS_CODE"
+            echo "Error response body:"
+            cat "$RESPONSE_FILE"
+            echo ""
+            
+            # Check for specific error patterns
+            if grep -q "public_vulnerability" "$RESPONSE_FILE"; then
+              echo "⚠️  Error related to vulnerability data provider detected."
+              echo "This may indicate a policy rule requiring vulnerability data that cannot be fetched."
+              echo "Please check:"
+              echo "  1. If vulnerability scan evidence is required, ensure it exists for this application version"
+              echo "  2. If vulnerability policies are configured, verify they are correctly set up"
+              echo "  3. Contact JFrog Platform admin if the vulnerability data provider service is misconfigured"
+            fi
+            
+            if grep -q "gate-certify\|gate certification\|exit gate" "$RESPONSE_FILE"; then
+              echo "⚠️  Error related to exit gate certification detected."
+              echo "This may indicate missing exit gate evidence for the source stage."
+            fi
+            
+            rm "$RESPONSE_FILE"
             exit 1
           fi
 
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage (after promotion)
+        if: success() && steps.promote_step.outcome == 'success'
         run: |
           set -e
           echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage after successful promotion..."
