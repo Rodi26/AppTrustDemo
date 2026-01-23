@@ -146,13 +146,11 @@ jobs:
           EOF
           
           # Create evidence using CLI - explicitly attach to application version
-          # Add verbose flag to diagnose API calls and ensure project context is set
-          echo "Attempting to create evidence with verbose logging..."
+          echo "Attempting to create evidence..."
           EVIDENCE_CREATED=false
           EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/$APP_VER/release-bundle.json.evd"
           
           if jf evd create \
-              --verbose \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
               --predicate gate-certify-predicate-dev.json \
