@@ -180,7 +180,6 @@ jobs:
           if ! jf evd create \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
-              --project ${{ env.JF_PROJECT }} \
               --predicate gate-certify-predicate-dev.json \
               --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
               --markdown gate-certify-dev.md \
@@ -302,7 +301,6 @@ jobs:
           if ! jf evd create \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
-              --project ${{ env.JF_PROJECT }} \
               --predicate gate-certify-predicate.json \
               --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
               --markdown gate-certify.md \
