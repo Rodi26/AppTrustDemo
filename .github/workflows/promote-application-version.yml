@@ -68,8 +68,13 @@ jobs:
           SHOW_OUT=$(jf c show "$SERVER_ID" || true)
           echo "$SHOW_OUT"
 
-          # Extract the URL line (handles both 'Url:' and 'URL:' variations)
-          CFG_URL=$(echo "$SHOW_OUT" | sed -n 's/^[Uu][Rr][Ll]:[[:space:]]*//p' | head -n 1)
+          # Extract the URL from "JFrog Platform URL:" line (handles tabs and spaces)
+          CFG_URL=$(echo "$SHOW_OUT" | grep -i "JFrog Platform URL" | sed -E 's/.*JFrog Platform URL:[[:space:]]*//' | sed 's/[[:space:]]*$//' | head -n 1)
+
+          # Fallback: if not found, try other possible formats
+          if [ -z "${CFG_URL:-}" ]; then
+            CFG_URL=$(echo "$SHOW_OUT" | grep -iE "^[Uu][Rr][Ll]:" | sed -E 's/^[Uu][Rr][Ll]:[[:space:]]*//' | head -n 1)
+          fi
 
           if [ -z "${CFG_URL:-}" ]; then
             echo "⚠️  Could not parse JFrog CLI configured url from 'jf c show'. Skipping normalization." >&2
@@ -97,6 +102,16 @@ jobs:
           # Print final config
           FINAL_OUT=$(jf c show "$SERVER_ID" || true)
           echo "$FINAL_OUT"
+          
+          # Verify the normalized URL doesn't contain /apptrust
+          FINAL_URL=$(echo "$FINAL_OUT" | grep -i "JFrog Platform URL" | sed -E 's/.*JFrog Platform URL:[[:space:]]*//' | sed 's/[[:space:]]*$//' | head -n 1)
+          if [ -n "${FINAL_URL:-}" ]; then
+            FINAL_URL="${FINAL_URL%/}"
+            echo "Final configured URL: $FINAL_URL"
+            if [[ "$FINAL_URL" == */apptrust ]]; then
+              echo "⚠️  WARNING: Final URL still contains /apptrust suffix. This may cause double /apptrust/apptrust/ paths." >&2
+            fi
+          fi
           
       - name: Get latest application version
         id: get_app_ver
