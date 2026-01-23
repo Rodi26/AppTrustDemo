@@ -43,6 +43,7 @@ jobs:
           version: 2.82.0
           oidc-provider-name: btcwallet-gh
           oidc-audience: btcwallet-gh
+          custom-server-id: setup-jfrog-cli-server
         id: setup-cli
         env:
           JF_URL: ${{ vars.JF_URL }}
@@ -53,8 +54,30 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Show current config and extract the configured platform URL
-          CFG_URL=$(jf c show setup-jfrog-cli-server --json | jq -r '.url')
+          # Determine the server-id created by the setup action.
+          # The action exports SETUP_JFROG_CLI_SERVER_IDS (can be a single id or comma-separated list).
+          SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
+          if [ -z "${SERVER_ID:-}" ]; then
+            echo "⚠️  SETUP_JFROG_CLI_SERVER_IDS is empty; cannot determine JFrog CLI server-id for normalization." >&2
+            exit 0
+          fi
+          echo "Using JFrog CLI server-id: $SERVER_ID"
+
+          # JFrog CLI v2.82.0 does not support `jf c show <id> --json`.
+          # Parse the configured URL from the human-readable output.
+          SHOW_OUT=$(jf c show "$SERVER_ID" || true)
+          echo "$SHOW_OUT"
+
+          # Extract the URL line (handles both 'Url:' and 'URL:' variations)
+          CFG_URL=$(echo "$SHOW_OUT" | sed -n 's/^[Uu][Rr][Ll]:[[:space:]]*//p' | head -n 1)
+
+          if [ -z "${CFG_URL:-}" ]; then
+            echo "⚠️  Could not parse JFrog CLI configured url from 'jf c show'. Skipping normalization." >&2
+            exit 0
+          fi
+
+          # Trim trailing slash for consistent matching
+          CFG_URL="${CFG_URL%/}"
           echo "JFrog CLI configured url: $CFG_URL"
 
           # If the configured URL ends with /apptrust, strip it. Otherwise keep as-is.
@@ -62,7 +85,7 @@ jobs:
             BASE_URL="${CFG_URL%/apptrust}"
             echo "Detected url ending with /apptrust. Normalizing to: $BASE_URL"
 
-            jf c add setup-jfrog-cli-server \
+            jf c add "$SERVER_ID" \
               --url "$BASE_URL" \
               --access-token "${{ steps.setup-cli.outputs.oidc-token }}" \
               --interactive=false \
@@ -71,9 +94,9 @@ jobs:
             echo "No normalization needed."
           fi
 
-          # Reprint final config URL
-          FINAL_URL=$(jf c show setup-jfrog-cli-server --json | jq -r '.url')
-          echo "JFrog CLI final url: $FINAL_URL"
+          # Print final config
+          FINAL_OUT=$(jf c show "$SERVER_ID" || true)
+          echo "$FINAL_OUT"
           
       - name: Get latest application version
         id: get_app_ver
