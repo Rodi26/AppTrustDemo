@@ -38,6 +38,7 @@ jobs:
           version: latest
           oidc-provider-name: btcwallet-gh
           oidc-audience: btcwallet-gh
+          disable-auto-evidence-collection: true
         id: setup-cli
         env:
           JF_URL: ${{ vars.JF_URL }}
