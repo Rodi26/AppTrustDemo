@@ -53,6 +53,32 @@ jobs:
       - name: Normalize JFrog CLI base URL for AppTrust
         id: normalize-cli
         run: |
+      - name: Configure dedicated JFrog CLI server for AppTrust endpoints
+        id: apptrust_server
+        run: |
+          set -euo pipefail
+
+          # Create a dedicated server-id whose *Platform URL* includes the /apptrust prefix.
+          # This is needed because some AppTrust-related CLI subcommands resolve endpoints relative to the Platform URL.
+          # We explicitly set the other service URLs to keep Artifactory/Xray/etc pointing to their standard base paths.
+          APPTRUST_SERVER_ID="apptrust-jfrog-cli-server"
+
+          jf c add "$APPTRUST_SERVER_ID" \
+            --url "${JF_URL%/}/apptrust" \
+            --artifactory-url "${JF_URL%/}/artifactory" \
+            --xray-url "${JF_URL%/}/xray" \
+            --dist-url "${JF_URL%/}/distribution" \
+            --mission-control-url "${JF_URL%/}/mc" \
+            --pipelines-url "${JF_URL%/}/pipelines" \
+            --access-token "${{ steps.setup-cli.outputs.oidc-token }}" \
+            --interactive=false \
+            --overwrite=true
+
+          echo "Configured AppTrust server-id: $APPTRUST_SERVER_ID"
+          jf c show "$APPTRUST_SERVER_ID" || true
+
+          # Export server id for later steps
+          echo "server_id=$APPTRUST_SERVER_ID" >> "$GITHUB_OUTPUT"
           set -euo pipefail
 
           # Determine the server-id created by the setup action.
@@ -240,27 +266,19 @@ jobs:
           - **Version**: $APP_VER
           EOF
 
-          echo "Attempting to create evidence (must attach to AppTrust application/version)..."
-
-          # Use CLI with --server-id to ensure we use the normalized server configuration
-          # This avoids the double /apptrust/apptrust/ path bug
-          SERVER_ID="${{ steps.normalize-cli.outputs.server_id }}"
-          if [ -z "${SERVER_ID:-}" ]; then
-            echo "⚠️  SERVER_ID is not available. Falling back to default server." >&2
-            SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
-          fi
-          
+          # Use the dedicated AppTrust server-id (Platform URL includes /apptrust)
+          SERVER_ID="${{ steps.apptrust_server.outputs.server_id }}"
           echo "Using JFrog CLI server-id: $SERVER_ID"
           echo "Creating evidence with CLI..."
 
           jf evd create \
-            --server-id "$SERVER_ID" \
-            --application-key "${{ env.APP_ID }}" \
-            --application-version "$APP_VER" \
-            --predicate gate-certify-predicate-dev.json \
-            --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
-            --markdown gate-certify-dev.md \
-            --provider-id apptrust
+              --server-id "$SERVER_ID" \
+              --application-key "${{ env.APP_ID }}" \
+              --application-version "$APP_VER" \
+              --predicate gate-certify-predicate-dev.json \
+              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+              --markdown gate-certify-dev.md \
+              --provider-id apptrust
 
           echo "✅ DEV gate certification evidence created successfully (attached to application/version)"
 
@@ -367,25 +385,14 @@ jobs:
           - **Version**: $APP_VER
           EOF
 
-          # Use CLI with --server-id to ensure we use the normalized server configuration
-          # This avoids the double /apptrust/apptrust/ path bug
-          SERVER_ID="${{ steps.normalize-cli.outputs.server_id }}"
-          if [ -z "${SERVER_ID:-}" ]; then
-            echo "⚠️  SERVER_ID is not available. Falling back to default server." >&2
-            SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
-          fi
-          
-          echo "Using JFrog CLI server-id: $SERVER_ID"
-          echo "Creating evidence with CLI..."
-
           jf evd create \
-            --server-id "$SERVER_ID" \
-            --application-key "${{ env.APP_ID }}" \
-            --application-version "$APP_VER" \
-            --predicate gate-certify-predicate.json \
-            --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
-            --markdown gate-certify.md \
-            --provider-id apptrust
+              --server-id "${{ steps.apptrust_server.outputs.server_id }}" \
+              --application-key "${{ env.APP_ID }}" \
+              --application-version "$APP_VER" \
+              --predicate gate-certify-predicate.json \
+              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+              --markdown gate-certify.md \
+              --provider-id apptrust
 
           echo "✅ Gate certification evidence created successfully for $STAGE stage (attached to application/version)"
 
