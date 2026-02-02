@@ -272,6 +272,15 @@ jobs:
           set -euo pipefail
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           CURRENT_STAGE="${{ steps.get_app_ver.outputs.current_stage }}"
+          
+          # Check if already in target stage
+          if [ "$CURRENT_STAGE" == "$TARGET_STAGE" ]; then
+            echo "ℹ️  Application '$APP_ID' version $APP_VER is already in stage '$TARGET_STAGE'."
+            echo "Skipping promotion (no action needed)."
+            echo "promotion_skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
           REQUEST_BODY="{\"target_stage\":\"$TARGET_STAGE\"}"
           
           PROMOTION_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/promote"
@@ -293,6 +302,7 @@ jobs:
             echo "✅ Successfully promoted $APP_ID version $APP_VER to $TARGET_STAGE."
             cat "$RESPONSE_FILE"
             rm "$RESPONSE_FILE"
+            echo "promotion_skipped=false" >> "$GITHUB_OUTPUT"
           else
             echo "❌ Failed to promote application. HTTP status code: $STATUS_CODE"
             echo "Error response body:"
