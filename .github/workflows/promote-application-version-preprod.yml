@@ -33,7 +33,7 @@ jobs:
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         with:
-          version: 2.82.0
+          version: 2.89.0
           oidc-provider-name: btcwallet-gh
           oidc-audience: btcwallet-gh
         id: setup-cli
@@ -172,6 +172,29 @@ jobs:
             exit 1
           fi
 
+      - name: Preflight verify AppTrust application object is reachable
+        run: |
+          set -euo pipefail
+          APP_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID"
+          echo "Checking AppTrust application details: $APP_DETAILS_URL"
+
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X GET \
+            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
+            "$APP_DETAILS_URL")
+
+          if [ "$STATUS_CODE" != "200" ]; then
+            echo "❌ AppTrust application object is not reachable (HTTP $STATUS_CODE). Evidence cannot be attached to application/version until this is fixed." >&2
+            echo "URL: $APP_DETAILS_URL" >&2
+            echo "Response body:" >&2
+            cat "$RESPONSE_FILE" >&2
+            rm -f "$RESPONSE_FILE"
+            exit 1
+          fi
+
+          echo "✅ AppTrust application object reachable."
+          rm -f "$RESPONSE_FILE"
+
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage
         if: success() && steps.promote_step.outcome == 'success'
         env:
@@ -220,12 +243,14 @@ jobs:
           echo "Creating AppTrust gate certification evidence for $STAGE using JFrog CLI..."
 
           # Use the AppTrust server configuration for evidence creation
-          # The jf evd create command with --application-key should automatically use AppTrust endpoints
-          # but we ensure the AppTrust server is available
+          # Set the AppTrust server as default to ensure all CLI commands use it
           APPTRUST_SERVER_ID="apptrust-jfrog-cli-server"
+          echo "Setting AppTrust server '$APPTRUST_SERVER_ID' as default..."
+          jf c use "$APPTRUST_SERVER_ID"
           
-          # Temporarily set AppTrust server as default for this command
-          jf c use "$APPTRUST_SERVER_ID" || true
+          # Verify the server is being used
+          echo "Current default server:"
+          jf c show || true
 
           jf evd create \
               --application-key "${{ env.APP_ID }}" \
