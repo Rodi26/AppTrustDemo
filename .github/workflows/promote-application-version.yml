@@ -273,8 +273,15 @@ jobs:
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           CURRENT_STAGE="${{ steps.get_app_ver.outputs.current_stage }}"
           
+          # Normalize stage names (trim whitespace, convert to uppercase for comparison)
+          CURRENT_STAGE_NORM=$(echo "$CURRENT_STAGE" | tr '[:lower:]' '[:upper:]' | xargs)
+          TARGET_STAGE_NORM=$(echo "$TARGET_STAGE" | tr '[:lower:]' '[:upper:]' | xargs)
+          
+          echo "Debug: CURRENT_STAGE='$CURRENT_STAGE' (normalized: '$CURRENT_STAGE_NORM')"
+          echo "Debug: TARGET_STAGE='$TARGET_STAGE' (normalized: '$TARGET_STAGE_NORM')"
+          
           # Check if already in target stage
-          if [ "$CURRENT_STAGE" == "$TARGET_STAGE" ]; then
+          if [ "$CURRENT_STAGE_NORM" == "$TARGET_STAGE_NORM" ]; then
             echo "ℹ️  Application '$APP_ID' version $APP_VER is already in stage '$TARGET_STAGE'."
             echo "Skipping promotion (no action needed)."
             echo "promotion_skipped=true" >> "$GITHUB_OUTPUT"
