@@ -320,6 +320,8 @@ jobs:
 
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage (after promotion)
         if: success() && steps.promote_step.outcome == 'success'
+        env:
+          JFROG_CLI_BUILD_PROJECT: ${{ env.JF_PROJECT }}
         run: |
           set -euo pipefail
           echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage after successful promotion..."
@@ -340,6 +342,9 @@ jobs:
           echo "Creating evidence for stage: $STAGE (target stage: $TARGET_STAGE)"
           echo "Application: ${{ env.APP_ID }}"
           echo "Version: $APP_VER"
+          echo "Stage: $STAGE"
+          echo "Timestamp: $TIMESTAMP"
+          echo "Project: ${{ env.JF_PROJECT }}"
           
           # Create predicate JSON
           cat > gate-certify-predicate.json <<EOF
@@ -369,28 +374,17 @@ jobs:
           - **Version**: $APP_VER
           EOF
 
-          echo "Creating AppTrust gate certification evidence for $STAGE via REST API..."
+          echo "Creating AppTrust gate certification evidence for $STAGE using JFrog CLI..."
 
-          EVIDENCE_URL="$JF_URL/apptrust/api/v1/applications/${{ env.APP_ID }}/versions/$APP_VER/evidence"
-          echo "POST $EVIDENCE_URL"
+          jf evd create \
+              --application-key "${{ env.APP_ID }}" \
+              --application-version "$APP_VER" \
+              --predicate gate-certify-predicate.json \
+              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+              --markdown gate-certify.md \
+              --provider-id apptrust
 
-          RESPONSE_FILE=$(mktemp)
-          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
-            -H "Content-Type: application/json" \
-            --data-binary @gate-certify-predicate.json \
-            "$EVIDENCE_URL")
-
-          if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -le 299 ]]; then
-            echo "✅ Gate certification evidence created successfully for $STAGE via REST"
-            cat "$RESPONSE_FILE"
-            rm -f "$RESPONSE_FILE"
-          else
-            echo "❌ Failed to create gate certification evidence for $STAGE (HTTP $STATUS_CODE)" >&2
-            cat "$RESPONSE_FILE" >&2
-            rm -f "$RESPONSE_FILE"
-            exit 1
-          fi
+          echo "✅ Gate certification evidence created successfully for $STAGE"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
