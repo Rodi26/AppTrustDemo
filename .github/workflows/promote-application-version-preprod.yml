@@ -41,6 +41,33 @@ jobs:
           JF_URL: ${{ vars.JF_URL }}
           # JF_USER: ${{ vars.JF_USER }}
           # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
+      - name: Configure dedicated JFrog CLI server for AppTrust endpoints
+        id: apptrust_server
+        run: |
+          set -euo pipefail
+
+          # Create a dedicated server-id whose *Platform URL* includes the /apptrust prefix.
+          # This is needed because some AppTrust-related CLI subcommands resolve endpoints relative to the Platform URL.
+          # We explicitly set the other service URLs to keep Artifactory/Xray/etc pointing to their standard base paths.
+          APPTRUST_SERVER_ID="apptrust-jfrog-cli-server"
+
+          jf c add "$APPTRUST_SERVER_ID" \
+            --url "${JF_URL%/}/apptrust" \
+            --artifactory-url "${JF_URL%/}/artifactory" \
+            --xray-url "${JF_URL%/}/xray" \
+            --distribution-url "${JF_URL%/}/distribution" \
+            --mission-control-url "${JF_URL%/}/mc" \
+            --pipelines-url "${JF_URL%/}/pipelines" \
+            --access-token "${{ steps.setup-cli.outputs.oidc-token }}" \
+            --interactive=false \
+            --overwrite=true
+
+          echo "Configured AppTrust server-id: $APPTRUST_SERVER_ID"
+          jf c show "$APPTRUST_SERVER_ID" || true
+
+          # Export server id for later steps
+          echo "server_id=$APPTRUST_SERVER_ID" >> "$GITHUB_OUTPUT"
           
       - name: Get latest application version
         id: get_app_ver
@@ -95,11 +122,21 @@ jobs:
           fi
 
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage
+        env:
+          JFROG_CLI_BUILD_PROJECT: ${{ env.JF_PROJECT }}
         run: |
+          set -euo pipefail
           echo "📋 Creating gate certification evidence for ${{ env.TARGET_STAGE }} stage..."
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           STAGE="${{ env.TARGET_STAGE }}"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "Creating evidence for:"
+          echo "  Application: ${{ env.APP_ID }}"
+          echo "  Version: $APP_VER"
+          echo "  Stage: $STAGE"
+          echo "  Timestamp: $TIMESTAMP"
+          echo "  Project: ${{ env.JF_PROJECT }}"
           
           # Create predicate JSON
           cat > gate-certify-predicate.json <<EOF
@@ -113,6 +150,9 @@ jobs:
           }
           EOF
           
+          echo "Predicate JSON content:"
+          cat gate-certify-predicate.json
+          
           # Create markdown documentation
           cat > gate-certify.md <<EOF
           # Gate Certification Evidence - $STAGE Stage
@@ -124,7 +164,17 @@ jobs:
           - **Application**: ${{ env.APP_ID }}
           - **Version**: $APP_VER
           EOF
+
+          echo "Creating AppTrust gate certification evidence for $STAGE using JFrog CLI..."
+
+          # Use the AppTrust server configuration for evidence creation
+          # The jf evd create command with --application-key should automatically use AppTrust endpoints
+          # but we ensure the AppTrust server is available
+          APPTRUST_SERVER_ID="apptrust-jfrog-cli-server"
           
+          # Temporarily set AppTrust server as default for this command
+          jf c use "$APPTRUST_SERVER_ID" || true
+
           jf evd create \
               --application-key "${{ env.APP_ID }}" \
               --application-version "$APP_VER" \
