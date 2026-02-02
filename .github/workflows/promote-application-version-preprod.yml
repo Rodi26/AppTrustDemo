@@ -72,38 +72,84 @@ jobs:
       - name: Get latest application version
         id: get_app_ver
         run: |
+          set -euo pipefail
           # Use the API to get the latest version.
           # We use limit=1 and order_by=created to get the most recent version.
           API_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?order_by=created&limit=1"
           
           echo "Fetching latest application version from: $API_URL"
           
-          RESPONSE=$(curl -s -X GET \
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X GET \
             -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
             "$API_URL")
+          
+          if [ "$STATUS_CODE" != "200" ]; then
+            echo "❌ Failed to fetch latest application version. HTTP $STATUS_CODE" >&2
+            echo "URL: $API_URL" >&2
+            echo "Response body:" >&2
+            cat "$RESPONSE_FILE" >&2
+            rm -f "$RESPONSE_FILE"
+            exit 1
+          fi
+          
+          RESPONSE=$(cat "$RESPONSE_FILE")
+          rm -f "$RESPONSE_FILE"
           
           # Use jq to parse the JSON and extract the version.
           # The API returns an array 'versions', so we get the first element.
           LATEST_VER=$(echo "$RESPONSE" | jq -r '.versions[0].version')
+          
+          # Extract current stage directly from the versions list response
+          CURRENT_STAGE=$(echo "$RESPONSE" | jq -r '.versions[0].current_stage // .versions[0].stage // .versions[0].stages[0] // "DEV"' 2>/dev/null || echo "DEV")
           
           if [ "$LATEST_VER" == "null" ] || [ -z "$LATEST_VER" ]; then
             echo "Error: Could not retrieve a valid application version."
             exit 1
           fi
           
+          # If still empty or null, default to DEV
+          if [ "$CURRENT_STAGE" == "null" ] || [ -z "$CURRENT_STAGE" ]; then
+            CURRENT_STAGE="DEV"
+          fi
+          
           echo "Found latest application version: $LATEST_VER"
+          echo "Current stage: $CURRENT_STAGE"
+          
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
+          echo "current_stage=$CURRENT_STAGE" >> $GITHUB_OUTPUT
 
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
         run: |
+          set -euo pipefail
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          CURRENT_STAGE="${{ steps.get_app_ver.outputs.current_stage }}"
+          
+          # Normalize stage names (trim whitespace, convert to uppercase for comparison)
+          CURRENT_STAGE_NORM=$(echo "$CURRENT_STAGE" | tr '[:lower:]' '[:upper:]' | xargs)
+          TARGET_STAGE_NORM=$(echo "$TARGET_STAGE" | tr '[:lower:]' '[:upper:]' | xargs)
+          
+          echo "Debug: CURRENT_STAGE='$CURRENT_STAGE' (normalized: '$CURRENT_STAGE_NORM')"
+          echo "Debug: TARGET_STAGE='$TARGET_STAGE' (normalized: '$TARGET_STAGE_NORM')"
+          
+          # Check if already in target stage
+          if [ "$CURRENT_STAGE_NORM" == "$TARGET_STAGE_NORM" ]; then
+            echo "ℹ️  Application '$APP_ID' version $APP_VER is already in stage '$TARGET_STAGE'."
+            echo "Skipping promotion (no action needed)."
+            echo "promotion_skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
           REQUEST_BODY="{\"target_stage\":\"$TARGET_STAGE\"}"
           
           PROMOTION_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/promote"
-          echo "Promoting application '$APP_ID' version $APP_VER to stage $TARGET_STAGE..."
+          echo "Promoting application '$APP_ID' version $APP_VER from stage '$CURRENT_STAGE' to stage '$TARGET_STAGE'..."
+          echo "Promotion URL: $PROMOTION_URL"
           
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+          # Capture full response for better error diagnostics
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
             -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$REQUEST_BODY" \
@@ -113,15 +159,21 @@ jobs:
           
           # The API returns 200, 201, or 202 on success, depending on the promotion process.
           if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -le 202 ]]; then
-            echo "Successfully promoted $APP_ID version $APP_VER to $TARGET_STAGE."
+            echo "✅ Successfully promoted $APP_ID version $APP_VER to $TARGET_STAGE."
+            cat "$RESPONSE_FILE"
+            rm "$RESPONSE_FILE"
+            echo "promotion_skipped=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Failed to promote application. HTTP status code: $STATUS_CODE"
-            # Run again to see output
-            curl -s -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$REQUEST_BODY" "$PROMOTION_URL"
+            echo "❌ Failed to promote application. HTTP status code: $STATUS_CODE"
+            echo "Error response body:"
+            cat "$RESPONSE_FILE"
+            echo ""
+            rm "$RESPONSE_FILE"
             exit 1
           fi
 
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage
+        if: success() && steps.promote_step.outcome == 'success'
         env:
           JFROG_CLI_BUILD_PROJECT: ${{ env.JF_PROJECT }}
         run: |
