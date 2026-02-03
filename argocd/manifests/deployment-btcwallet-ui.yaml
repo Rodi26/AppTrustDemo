@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: btcwallet-ui-container
-        image: trainingdayapptrustb.jfrog.io/btcwallet-prod-docker-local/btcwallet-ui:11
+        image: trainingdayapptrustb.jfrog.io/btcwallet-prod-docker-local/btcwallet-ui:12
         ports:
         - containerPort: 80
       imagePullSecrets:
