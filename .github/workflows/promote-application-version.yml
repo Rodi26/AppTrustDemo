@@ -266,24 +266,39 @@ jobs:
 
           echo "✅ DEV gate certification evidence created successfully"
 
-          # QA entry gate "Must have been through Dev Stage" may expect stage="Dev" (title case)
-          # Create additional evidence with "Dev" to satisfy case-sensitive policy matching
-          if [ "$STAGE" = "DEV" ]; then
-            echo "Creating supplemental evidence with stage=Dev for QA entry gate policy..."
-            ALT_TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            printf '{"application_key":"%s","application_name":"%s","stage":"Dev","gate":"exit","status":"certified","timestamp":"%s"}\n' "${{ env.APP_ID }}" "${{ env.APP_DISPLAY_NAME }}" "$ALT_TS" > gate-certify-predicate-dev-alt.json
-            jf evd create \
-                --application-key "${{ env.APP_ID }}" \
-                --application-version "$APP_VER" \
-                --predicate gate-certify-predicate-dev-alt.json \
-                --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
-                --markdown gate-certify-dev.md \
-                --provider-id apptrust
-            echo "✅ Supplemental Dev (title case) evidence created"
-          fi
+      - name: Create gate certification evidence for QA stage (before promotion)
+        if: steps.get_app_ver.outputs.current_stage == 'QA'
+        env:
+          JFROG_CLI_BUILD_PROJECT: ${{ env.JF_PROJECT }}
+        run: |
+          set -euo pipefail
+          echo "📋 Creating gate certification evidence for QA stage before promotion..."
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          STAGE="QA"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "Creating QA exit gate evidence for:"
+          echo "  Application: ${{ env.APP_ID }}"
+          echo "  Version: $APP_VER"
+          echo "  Stage: $STAGE"
+          echo "  Timestamp: $TIMESTAMP"
+          
+          printf '{"application_key":"%s","application_name":"%s","stage":"%s","gate":"exit","status":"certified","timestamp":"%s"}\n' "${{ env.APP_ID }}" "${{ env.APP_DISPLAY_NAME }}" "$STAGE" "$TIMESTAMP" > gate-certify-predicate-qa.json
+          
+          printf '# Gate Certification Evidence - QA Stage\n- **Stage**: %s\n- **Gate Type**: exit\n- **Status**: certified\n- **Timestamp**: %s\n- **Application**: %s\n- **Version**: %s\n' "$STAGE" "$TIMESTAMP" "${{ env.APP_ID }}" "$APP_VER" > gate-certify-qa.md
+
+          jf evd create \
+              --application-key "${{ env.APP_ID }}" \
+              --application-version "$APP_VER" \
+              --predicate gate-certify-predicate-qa.json \
+              --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+              --markdown gate-certify-qa.md \
+              --provider-id apptrust
+
+          echo "✅ QA gate certification evidence created successfully"
 
       - name: Wait for evidence propagation
-        if: steps.get_app_ver.outputs.current_stage == 'DEV'
+        if: steps.get_app_ver.outputs.current_stage == 'DEV' || steps.get_app_ver.outputs.current_stage == 'QA'
         run: |
           echo "⏳ Waiting 45 seconds for evidence to propagate before promotion..."
           sleep 45
@@ -355,9 +370,13 @@ jobs:
             fi
             if grep -q "Must have been through Dev Stage" "$RESPONSE_FILE"; then
               echo "⚠️  QA entry gate 'Must have been through Dev Stage' policy failed."
-              echo "   The workflow creates evidence with stage=DEV and stage=Dev."
-              echo "   Check in JFrog UI: Lifecycle policies for this application,"
-              echo "   and ensure the Dev stage name matches (DEV vs Dev)."
+              echo "   Check in JFrog UI: Lifecycle policies for this application."
+            fi
+            if grep -q "failed to perform evaluation" "$RESPONSE_FILE"; then
+              echo "⚠️  Gate evaluation failed (e.g. QA→STAGING or DEV→QA)."
+              echo "   The workflow creates gate-certify evidence for the source stage before promotion."
+              echo "   If this persists, check: 1) policy rules on the target stage entry gate,"
+              echo "   2) evidence propagation delay (try increasing the wait), 3) JFrog support."
             fi
             
             rm "$RESPONSE_FILE"
