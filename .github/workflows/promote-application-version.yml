@@ -218,7 +218,7 @@ jobs:
           set -euo pipefail
           echo "📋 Creating gate certification evidence for DEV stage before promotion..."
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
-          STAGE="btcwallet-dev"
+          STAGE="DEV"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           echo "Creating DEV exit gate evidence for:"
@@ -265,6 +265,13 @@ jobs:
               --provider-id apptrust
 
           echo "✅ DEV gate certification evidence created successfully"
+
+      - name: Wait for evidence propagation
+        if: steps.get_app_ver.outputs.current_stage == 'DEV'
+        run: |
+          echo "⏳ Waiting 20 seconds for evidence to propagate before promotion..."
+          sleep 20
+          echo "✅ Wait complete"
 
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
