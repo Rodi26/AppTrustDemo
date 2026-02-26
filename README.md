@@ -378,6 +378,29 @@ For detailed information about each component, refer to the individual README fi
 3. **E2E Test Failures**: Ensure all services are running and accessible
 4. **Promotion Failures**: Check AppTrust gating rules and evidence requirements
 
+### Vérifier la configuration AppTrust
+
+En cas d'erreur « Must have been through Dev Stage » ou de promotion DEV→QA qui échoue, utilisez le script de vérification :
+
+```bash
+export JF_URL="https://your-instance.jfrog.io"
+export JF_ACCESS_TOKEN="your-admin-access-token"
+./scripts/verify-apptrust-config.sh [APP_ID] [PROJECT_KEY]
+```
+
+Exemple avec les valeurs par défaut (btcwalletapp, btcwallet) :
+
+```bash
+./scripts/verify-apptrust-config.sh
+```
+
+Le script vérifie :
+- L'application AppTrust et son projet
+- Les versions et leur stage actuel
+- Les stages du projet (Access API)
+- Les règles de gate certification (Unified Policy)
+- La cohérence des noms (workflow vs config)
+
 ### Debugging Steps
 
 1. Check GitHub Actions logs for detailed error messages

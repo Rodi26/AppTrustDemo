@@ -266,11 +266,35 @@ jobs:
 
           echo "✅ DEV gate certification evidence created successfully"
 
+          # QA entry gate "Must have been through Dev Stage" may expect stage="Dev" (title case)
+          # Create additional evidence with "Dev" to satisfy case-sensitive policy matching
+          if [ "$STAGE" = "DEV" ]; then
+            echo "Creating supplemental evidence with stage=Dev for QA entry gate policy..."
+            cat > gate-certify-predicate-dev-alt.json <<EOF
+{
+  "application_key": "${{ env.APP_ID }}",
+  "application_name": "${{ env.APP_DISPLAY_NAME }}",
+  "stage": "Dev",
+  "gate": "exit",
+  "status": "certified",
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+            jf evd create \
+                --application-key "${{ env.APP_ID }}" \
+                --application-version "$APP_VER" \
+                --predicate gate-certify-predicate-dev-alt.json \
+                --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
+                --markdown gate-certify-dev.md \
+                --provider-id apptrust
+            echo "✅ Supplemental Dev (title case) evidence created"
+          fi
+
       - name: Wait for evidence propagation
         if: steps.get_app_ver.outputs.current_stage == 'DEV'
         run: |
-          echo "⏳ Waiting 20 seconds for evidence to propagate before promotion..."
-          sleep 20
+          echo "⏳ Waiting 45 seconds for evidence to propagate before promotion..."
+          sleep 45
           echo "✅ Wait complete"
 
       - name: Promote application to ${{ env.TARGET_STAGE }}
@@ -336,6 +360,12 @@ jobs:
             if grep -q "gate-certify\|gate certification\|exit gate" "$RESPONSE_FILE"; then
               echo "⚠️  Error related to exit gate certification detected."
               echo "This may indicate missing exit gate evidence for the source stage."
+            fi
+            if grep -q "Must have been through Dev Stage" "$RESPONSE_FILE"; then
+              echo "⚠️  QA entry gate 'Must have been through Dev Stage' policy failed."
+              echo "   The workflow creates evidence with stage=DEV and stage=Dev."
+              echo "   Check in JFrog UI: Lifecycle policies for this application,"
+              echo "   and ensure the Dev stage name matches (DEV vs Dev)."
             fi
             
             rm "$RESPONSE_FILE"
