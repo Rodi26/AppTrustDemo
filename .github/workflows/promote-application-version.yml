@@ -218,7 +218,7 @@ jobs:
           set -euo pipefail
           echo "📋 Creating gate certification evidence for DEV stage before promotion..."
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
-          STAGE="DEV"
+          STAGE="btcwallet-dev"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           echo "Creating DEV exit gate evidence for:"
