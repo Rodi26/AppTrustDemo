@@ -270,16 +270,8 @@ jobs:
           # Create additional evidence with "Dev" to satisfy case-sensitive policy matching
           if [ "$STAGE" = "DEV" ]; then
             echo "Creating supplemental evidence with stage=Dev for QA entry gate policy..."
-            cat > gate-certify-predicate-dev-alt.json <<EOF
-{
-  "application_key": "${{ env.APP_ID }}",
-  "application_name": "${{ env.APP_DISPLAY_NAME }}",
-  "stage": "Dev",
-  "gate": "exit",
-  "status": "certified",
-  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-EOF
+            ALT_TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            printf '{"application_key":"%s","application_name":"%s","stage":"Dev","gate":"exit","status":"certified","timestamp":"%s"}\n' "${{ env.APP_ID }}" "${{ env.APP_DISPLAY_NAME }}" "$ALT_TS" > gate-certify-predicate-dev-alt.json
             jf evd create \
                 --application-key "${{ env.APP_ID }}" \
                 --application-version "$APP_VER" \
