@@ -48,7 +48,16 @@ jobs:
         pip install --no-cache-dir -r requirements-optimized.txt
         # Install minimal test dependencies
         pip install --no-cache-dir pytest pytest-asyncio
-        python -m pytest tests/ -v --tb=short
+        mkdir -p test-results
+        python -m pytest tests/ -v --tb=short --junitxml=test-results/junit.xml
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ai-translate-test-results
+        path: translate/test-results/junit.xml
+        retention-days: 7
 
   build:
     name: Build Docker Image
@@ -124,6 +133,28 @@ jobs:
         docker images ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
         echo "✅ Docker image verified"
         echo "ℹ️  Note: JFrog Platform automatically generates CycloneDX SBOMs and performs vulnerability scans when Docker images are pushed to Artifactory."
+
+    - name: Download test results
+      uses: actions/download-artifact@v4
+      with:
+        name: ai-translate-test-results
+        path: translate/test-results
+
+    - name: Create Test Evidence JSON
+      run: |
+        mkdir -p translate/evidence
+        bash btcwallet/scripts/convert-test-reports.sh translate/test-results translate/test-evidence.json
+
+    - name: Create test evidence on Docker image
+      run: |
+        echo "🔍 Creating pytest test evidence on Docker image..."
+        jf evd create \
+          --subject-repo-path ${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}/${{ github.run_number }}/list.manifest.json \
+          --project ${{ env.JF_PROJECT }} \
+          --predicate translate/test-evidence.json \
+          --predicate-type https://jfrog.com/evidence/test-results/v1 \
+          --markdown translate/test-evidence.md \
+          --provider-id junit
 
     - name: Publish buildinfo
       id: publish_build
