@@ -12,7 +12,7 @@ permissions:
 jobs:
   promote-application:
     name: Promote Latest Application Version
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       JF_URL: ${{ vars.JF_URL }}
       JF_USER: ${{ vars.JF_USER }}
@@ -37,17 +37,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
       
-      - name: Configure JFrog CLI
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        with:
+          version: latest
+          custom-server-id: evidence-demo
+          oidc-provider-name: btcwallet-gh
+          oidc-audience: btcwallet-gh
         id: setup-cli
-        run: |
-          jf config add evidence-demo \
-            --url "$JF_URL" \
-            --access-token "$JF_ACCESS_TOKEN" \
-            --overwrite
-          jf config use evidence-demo
         env:
           JF_URL: ${{ vars.JF_URL }}
-          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+          JF_PROJECT: ${{ vars.JF_PROJECT }}
 
       - name: Normalize JFrog CLI base URL for AppTrust
         id: normalize-cli
