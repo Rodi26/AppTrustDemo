@@ -92,6 +92,13 @@ jobs:
           echo "app_ver=$LATEST_VER" >> $GITHUB_OUTPUT
           echo "current_stage=$CURRENT_STAGE" >> $GITHUB_OUTPUT
 
+      - name: Preflight verify AppTrust application object is reachable
+        run: |
+          set -euo pipefail
+          echo "Checking AppTrust application is reachable..."
+          jf apptrust ping
+          echo "✅ AppTrust application object reachable."
+
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
         run: |
@@ -128,13 +135,6 @@ jobs:
             echo "  - Evidence propagation delay: consider re-running after a short wait"
             exit 1
           fi
-
-      - name: Preflight verify AppTrust application object is reachable
-        run: |
-          set -euo pipefail
-          echo "Checking AppTrust application is reachable..."
-          jf apptrust ping
-          echo "✅ AppTrust application object reachable."
 
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage
         if: success() && steps.promote_step.outcome == 'success'
@@ -234,9 +234,3 @@ jobs:
               --provider-id servicenow
                    
           echo "✅ Evidence created successfully"
-          
-          # Write evidence path to attestation paths file for automatic evidence collection
-          ATTESTATION_PATHS_FILE="/home/runner/work/_temp/created_attestation_paths.txt"
-          mkdir -p "$(dirname "$ATTESTATION_PATHS_FILE")"
-          echo "$EVIDENCE_PATH" >> "$ATTESTATION_PATHS_FILE"
-          echo "📝 Written evidence path to attestation paths file: $EVIDENCE_PATH"
