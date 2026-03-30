@@ -99,6 +99,36 @@ jobs:
           jf apptrust ping
           echo "✅ AppTrust application object reachable."
 
+      - name: Dry-run promotion to diagnose policy evaluation
+        continue-on-error: true
+        run: |
+          set +e
+          APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
+          echo "🔍 Running dry-run promotion to diagnose policy evaluation for stage '$TARGET_STAGE'..."
+          echo "  Application: $APP_ID"
+          echo "  Version: $APP_VER"
+          echo "  Target stage: $TARGET_STAGE"
+          echo ""
+          DRY_RUN_OUTPUT=$(jf apptrust version-promote "$APP_ID" "$APP_VER" "$TARGET_STAGE" --sync --dry-run 2>&1)
+          DRY_RUN_EXIT=$?
+          echo "$DRY_RUN_OUTPUT"
+          echo ""
+          if [ $DRY_RUN_EXIT -ne 0 ]; then
+            echo "⚠️  Dry-run failed — this indicates a policy/configuration issue."
+            echo ""
+            echo "Common root causes for 'system error during promotion evaluation':"
+            echo "  1. Stage '$TARGET_STAGE' has no policies configured in Unified Policy"
+            echo "  2. Stage '$TARGET_STAGE' has a misconfigured policy rule (e.g., references a missing Xray policy)"
+            echo "  3. Stage '$TARGET_STAGE' has no Docker repository mapped for artifact copy"
+            echo ""
+            echo "To fix: In the JFrog Platform UI → Lifecycle → Application Policies:"
+            echo "  - Verify stage '$TARGET_STAGE' entry gate has at least one policy configured"
+            echo "  - Verify stage '$TARGET_STAGE' has a repository mapped in the btcwallet project"
+            echo "  - If stage name is wrong, update the PREPROD_STAGE GitHub variable"
+          else
+            echo "✅ Dry-run succeeded — policy evaluation passed. Proceeding with actual promotion."
+          fi
+
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
         run: |
