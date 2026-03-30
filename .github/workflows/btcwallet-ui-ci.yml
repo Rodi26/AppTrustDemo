@@ -33,6 +33,7 @@ jobs:
       DOCKER_REGISTRY_PREFIX: ${{ vars.DOCKER_REGISTRY_PREFIX }}
       JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       JF_USER: ${{ vars.JF_USER }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     outputs:
       build_name: ${{ steps.publish_build.outputs.build_name }}
       build_number: ${{ steps.publish_build.outputs.build_number }}
@@ -53,9 +54,21 @@ jobs:
         JF_URL: ${{ vars.JF_URL }}
         JF_PROJECT: ${{ vars.JF_PROJECT }}
 
+    - name: SonarQube scan
+      uses: SonarSource/sonarqube-scan-action@v7
+      continue-on-error: true
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      with:
+        projectBaseDir: btcwallet-ui/
+        args: >
+          -Dsonar.organization=my-evidence-test-org1
+          -Dsonar.projectKey=my-evidence-test-org1_btcwallet-ui
+          -Dsonar.qualitygate.wait=false
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
-      
+
     - name: Login to Docker Registry
       run: |
         echo "🔐 Logging into JFrog Artifactory Docker registry..."
@@ -170,6 +183,30 @@ jobs:
           --predicate-type https://jfrog.com/evidence/test-results/v1 \
           --markdown btcwallet-ui/test-evidence.md \
           --provider-id junit
+
+    - name: Create SonarQube evidence on Docker image
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        echo "🔍 Creating SonarQube evidence on Docker image..."
+        SONAR_REPORT=""
+        for loc in "btcwallet-ui/.sonar/report-task.txt" "btcwallet-ui/.scannerwork/report-task.txt" ".sonar/report-task.txt" ".scannerwork/report-task.txt"; do
+          if [ -f "$loc" ]; then
+            SONAR_REPORT="$loc"
+            break
+          fi
+        done
+        if [ -n "$SONAR_REPORT" ]; then
+          echo "✅ SonarQube report-task.txt found at: $SONAR_REPORT"
+          jf evd create \
+            --package-name ${{ env.SOURCE_BUILD_NAME }} \
+            --package-version ${{ github.run_number }} \
+            --package-repo-name ${{ env.PROJECT_DOCKER_DEV_REPO }} \
+            --project ${{ env.JF_PROJECT }} \
+            --integration sonar
+        else
+          echo "⚠️ SonarQube report-task.txt not found — skipping SonarQube evidence (scan may have been skipped or failed)"
+        fi
 
     - name: Publish buildinfo
       id: publish_build
