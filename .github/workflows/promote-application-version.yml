@@ -170,7 +170,6 @@ jobs:
               --predicate gate-certify-predicate-dev.json \
               --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
               --markdown gate-certify-dev.md \
-              --project ${{ env.JF_PROJECT }} \
               --provider-id apptrust
 
           echo "✅ DEV gate certification evidence created successfully"
@@ -202,7 +201,6 @@ jobs:
               --predicate gate-certify-predicate-qa.json \
               --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
               --markdown gate-certify-qa.md \
-              --project ${{ env.JF_PROJECT }} \
               --provider-id apptrust
 
           echo "✅ QA gate certification evidence created successfully"
@@ -315,7 +313,6 @@ jobs:
               --predicate gate-certify-predicate.json \
               --predicate-type https://jfrog.com/evidence/apptrust/gate-certify/v1 \
               --markdown gate-certify.md \
-              --project ${{ env.JF_PROJECT }} \
               --provider-id apptrust
 
           echo "✅ Gate certification evidence created successfully for $STAGE"
