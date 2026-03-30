@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Configure JFrog CLI
         id: setup-cli
@@ -318,7 +318,7 @@ jobs:
           echo "✅ Gate certification evidence created successfully for $STAGE"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '18'
           cache: 'npm'

@@ -41,24 +41,24 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Set up JDK 21
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '21'
         distribution: 'temurin'
         cache: 'maven'
 
     - name: Cache SonarQube packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.sonar/cache
         key: ${{ runner.os }}-sonar
         restore-keys: ${{ runner.os }}-sonar
 
     - name: Cache Maven packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('btcwallet/pom.xml') }}
@@ -139,7 +139,7 @@ jobs:
         mvn test-compile
       
     - name: Sonar scan
-      uses: SonarSource/sonarqube-scan-action@v6
+      uses: SonarSource/sonarqube-scan-action@v7
       continue-on-error: true  # Don't fail build on SonarCloud quality gate issues
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -160,7 +160,7 @@ jobs:
         ./scripts/convert-test-reports.sh target/surefire-reports 
       
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
     
     - name: Login to Docker Registry
       run: |
@@ -185,7 +185,7 @@ jobs:
         echo "Extracted digest: $DIGEST"
 
     - name: Attest Docker Image with Build Provenance
-      uses: actions/attest-build-provenance@v3
+      uses: actions/attest-build-provenance@v4
       with:
         # The 'oci://' prefix is required by JFrog to correctly parse the artifact type
         subject-name: oci://${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}/${{ env.SOURCE_BUILD_NAME }}:${{ github.run_number }}
