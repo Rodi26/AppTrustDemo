@@ -68,28 +68,10 @@ jobs:
         id: promote_step
         run: |
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
-          REQUEST_BODY="{}"
-          
-          RELEASE_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/release"
-          echo "Releasing application '$APP_ID' version $APP_VER to stage PROD..."
-          
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$REQUEST_BODY" \
-            "$RELEASE_URL")
-          
-          echo "Release request returned status code: $STATUS_CODE"
-          
-          # The API returns 200, 201, or 202 on success, depending on the promotion process.
-          if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -le 202 ]]; then
-            echo "Successfully promoted $APP_ID version $APP_VER to PROD."
-          else
-            echo "Failed to promote application. HTTP status code: $STATUS_CODE"
-            # Run again to see output
-            curl -s -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$REQUEST_BODY" "$RELEASE_URL"
-            exit 1
-          fi
+
+          echo "Releasing application '$APP_ID' version $APP_VER to PROD..."
+          jf apptrust version-release "$APP_ID" "$APP_VER" --sync
+          echo "✅ Successfully released $APP_ID version $APP_VER to PROD."
 
       - name: Update ArgoCD deployment
         run: |

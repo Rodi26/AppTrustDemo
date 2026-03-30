@@ -42,33 +42,6 @@ jobs:
           JF_URL: ${{ vars.JF_URL }}
           JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-      - name: Configure dedicated JFrog CLI server for AppTrust endpoints
-        id: apptrust_server
-        run: |
-          set -euo pipefail
-
-          # Create a dedicated server-id whose *Platform URL* includes the /apptrust prefix.
-          # This is needed because some AppTrust-related CLI subcommands resolve endpoints relative to the Platform URL.
-          # We explicitly set the other service URLs to keep Artifactory/Xray/etc pointing to their standard base paths.
-          APPTRUST_SERVER_ID="apptrust-jfrog-cli-server"
-
-          jf c add "$APPTRUST_SERVER_ID" \
-            --url "${JF_URL%/}/apptrust" \
-            --artifactory-url "${JF_URL%/}/artifactory" \
-            --xray-url "${JF_URL%/}/xray" \
-            --distribution-url "${JF_URL%/}/distribution" \
-            --mission-control-url "${JF_URL%/}/mc" \
-            --pipelines-url "${JF_URL%/}/pipelines" \
-            --access-token "$JF_ACCESS_TOKEN" \
-            --interactive=false \
-            --overwrite=true
-
-          echo "Configured AppTrust server-id: $APPTRUST_SERVER_ID"
-          jf c show "$APPTRUST_SERVER_ID" || true
-
-          # Export server id for later steps
-          echo "server_id=$APPTRUST_SERVER_ID" >> "$GITHUB_OUTPUT"
-          
       - name: Get latest application version
         id: get_app_ver
         run: |
@@ -141,59 +114,27 @@ jobs:
             exit 0
           fi
           
-          REQUEST_BODY="{\"target_stage\":\"$TARGET_STAGE\"}"
-          
-          PROMOTION_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/promote"
           echo "Promoting application '$APP_ID' version $APP_VER from stage '$CURRENT_STAGE' to stage '$TARGET_STAGE'..."
-          echo "Promotion URL: $PROMOTION_URL"
-          
-          # Capture full response for better error diagnostics
-          RESPONSE_FILE=$(mktemp)
-          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$REQUEST_BODY" \
-            "$PROMOTION_URL")
-          
-          echo "Promotion request returned status code: $STATUS_CODE"
-          
-          # The API returns 200, 201, or 202 on success, depending on the promotion process.
-          if [[ "$STATUS_CODE" -ge 200 && "$STATUS_CODE" -le 202 ]]; then
+
+          if jf apptrust version-promote "$APP_ID" "$APP_VER" "$TARGET_STAGE" --sync; then
             echo "✅ Successfully promoted $APP_ID version $APP_VER to $TARGET_STAGE."
-            cat "$RESPONSE_FILE"
-            rm "$RESPONSE_FILE"
             echo "promotion_skipped=false" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ Failed to promote application. HTTP status code: $STATUS_CODE"
-            echo "Error response body:"
-            cat "$RESPONSE_FILE"
+            echo "❌ Failed to promote application. Check logs above for details."
             echo ""
-            rm "$RESPONSE_FILE"
+            echo "Common causes:"
+            echo "  - Missing or insufficient evidence (gate certification, test results, vulnerability scan)"
+            echo "  - Policy violation: check JFrog UI Lifecycle policies for this application"
+            echo "  - Evidence propagation delay: consider re-running after a short wait"
             exit 1
           fi
 
       - name: Preflight verify AppTrust application object is reachable
         run: |
           set -euo pipefail
-          APP_DETAILS_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID"
-          echo "Checking AppTrust application details: $APP_DETAILS_URL"
-
-          RESPONSE_FILE=$(mktemp)
-          STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X GET \
-            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
-            "$APP_DETAILS_URL")
-
-          if [ "$STATUS_CODE" != "200" ]; then
-            echo "❌ AppTrust application object is not reachable (HTTP $STATUS_CODE). Evidence cannot be attached to application/version until this is fixed." >&2
-            echo "URL: $APP_DETAILS_URL" >&2
-            echo "Response body:" >&2
-            cat "$RESPONSE_FILE" >&2
-            rm -f "$RESPONSE_FILE"
-            exit 1
-          fi
-
+          echo "Checking AppTrust application is reachable..."
+          jf apptrust ping
           echo "✅ AppTrust application object reachable."
-          rm -f "$RESPONSE_FILE"
 
       - name: Create gate certification evidence for ${{ env.TARGET_STAGE }} stage
         if: success() && steps.promote_step.outcome == 'success'

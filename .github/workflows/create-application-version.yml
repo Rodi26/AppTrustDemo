@@ -50,9 +50,7 @@ jobs:
           set +e
           getBuildNumber() {
             echo "Requeseting build ${{ vars.JF_URL }}/artifactory/api/build/$1?project=${{ env.JF_PROJECT }}" >&2
-            local RESPONSE=$(curl -s -X GET \
-                                -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
-                                "${{ vars.JF_URL }}/artifactory/api/build/$1?project=${{ env.JF_PROJECT }}")
+            local RESPONSE=$(jf rt curl -s -X GET "/api/build/$1?project=${{ env.JF_PROJECT }}")
             local LATEST_BUILD_NUMBER=$(echo "$RESPONSE" | \
                                 jq -r '.buildsNumbers | sort_by(.started) | reverse | .[0].uri | ltrimstr("/")')
             if [ "" == "$LATEST_BUILD_NUMBER" ]; then 
@@ -142,26 +140,9 @@ jobs:
           echo "LATEST_VER=$LATEST_VER"
           echo "NEXT_VER=$NEXT_VER"
   
-          REQUEST_BODY="{\"version\": \"$NEXT_VER\", \"sources\": {\"builds\": [\
-          {\"name\":\"${{ env.SOURCE_BUILD_NAME_BACKEND }}\", \"number\":\"$BTCWALLET_BUILD_NUMBER\", \"repository_key\":\"${{ env.JF_PROJECT }}-build-info\", \"include_dependencies\":false},\
-          {\"name\":\"${{ env.SOURCE_BUILD_NAME_FRONTEND }}\", \"number\":\"$BTCWALLET_UI_BUILD_NUMBER\", \"repository_key\":\"${{ env.JF_PROJECT }}-build-info\", \"include_dependencies\":false},\
-          {\"name\":\"${{ env.SOURCE_BUILD_NAME_SERVICE }}\", \"number\":\"$AI_TRANSLATE_BUILD_NUMBER\", \"repository_key\":\"${{ env.JF_PROJECT }}-build-info\", \"include_dependencies\":false}\
-          ]}}"
-          echo "REQUEST_BODY=$REQUEST_BODY"
-
-          RESPONSE_FILE=$(mktemp)
-          STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false")
-          echo "STATUS_CODE=$STATUS_CODE"
-          
-          if [ "201" != "$STATUS_CODE" ]; then 
-              echo "Status code is not 201: $STATUS_CODE"
-              echo "Response body:"
-              cat "$RESPONSE_FILE"
-              rm "$RESPONSE_FILE"
-              exit 1
-          fi
-          
-          rm "$RESPONSE_FILE"
+          jf apptrust version-create "$APP_ID" "$NEXT_VER" \
+            --source-type-builds "name=${{ env.SOURCE_BUILD_NAME_BACKEND }}, id=$BTCWALLET_BUILD_NUMBER, repo-key=${{ env.JF_PROJECT }}-build-info; name=${{ env.SOURCE_BUILD_NAME_FRONTEND }}, id=$BTCWALLET_UI_BUILD_NUMBER, repo-key=${{ env.JF_PROJECT }}-build-info; name=${{ env.SOURCE_BUILD_NAME_SERVICE }}, id=$AI_TRANSLATE_BUILD_NUMBER, repo-key=${{ env.JF_PROJECT }}-build-info" \
+            --sync
           echo "app_ver=$NEXT_VER" >> $GITHUB_OUTPUT
 
       - name: Verify vulnerability data availability
@@ -186,26 +167,11 @@ jobs:
       - name: Promote application to DEV
         run: |
           APP_VER=${{ steps.create_app_ver.outputs.app_ver }}
-          REQUEST_BODY="{\"target_stage\":\"DEV\"}"
-          REQUEST_URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/promote?async=false"
-          
+
           echo "APP_VER=$APP_VER"
           echo "APP_ID=$APP_ID"
-          echo "REQUEST_BODY: $REQUEST_BODY"
-          echo "REQUEST_URL: $REQUEST_URL"
 
-          RESPONSE_FILE=$(mktemp)
-          STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$REQUEST_URL")
-          echo "STATUS_CODE=$STATUS_CODE"
-          
-          if [ "200" != "$STATUS_CODE" -a "201" != "$STATUS_CODE" ]; then 
-              echo "Status code is not 200 or 201: $STATUS_CODE"
-              echo "Response body:"
-              cat "$RESPONSE_FILE"
-              rm "$RESPONSE_FILE"
-              exit 1
-          fi
-          rm "$RESPONSE_FILE"
+          jf apptrust version-promote "$APP_ID" "$APP_VER" "DEV" --sync
           echo "Successfully promoted $APP_ID version $APP_VER to DEV"
 
       - name: Create gate certification evidence for DEV stage
