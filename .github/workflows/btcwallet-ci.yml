@@ -258,6 +258,18 @@ jobs:
         echo "build_name=${{ env.SOURCE_BUILD_NAME }}" >> $GITHUB_OUTPUT
         echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
+    - name: Xray build scan (triggers contextual analysis on Docker image)
+      env:
+        JF_PROJECT: ${{ vars.JF_PROJECT }}
+      run: |
+        set +e  # Don't fail CI on policy violations — violations are tracked in JFrog Platform
+        jf xr build-scan \
+          --project "${{ env.JF_PROJECT }}" \
+          --vuln \
+          "${{ env.SOURCE_BUILD_NAME }}" "${{ github.run_number }}"
+        set -e
+        echo "✅ Xray build scan triggered. Review results in JFrog Platform."
+
   create_jira_evidence:
     needs: build-and-test
     uses: ./.github/workflows/create-jira-evidence.yml
