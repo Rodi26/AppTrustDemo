@@ -52,7 +52,7 @@ jobs:
 
   build:
     name: Build Docker Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
@@ -60,6 +60,8 @@ jobs:
       JF_PROJECT: ${{ vars.JF_PROJECT }}
       SOURCE_BUILD_NAME: "ai-translate"
       DOCKER_REGISTRY_PREFIX: ${{ vars.DOCKER_REGISTRY_PREFIX }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      JF_USER: ${{ vars.JF_USER }}
 
     needs: test
     outputs: 
@@ -69,18 +71,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      with:
-        version: latest
-        oidc-provider-name: btcwallet-gh
-        oidc-audience: btcwallet-gh
+    - name: Configure JFrog CLI
       id: setup-cli
+      run: |
+        jf config add evidence-demo \
+          --url "$JF_URL" \
+          --access-token "$JF_ACCESS_TOKEN" \
+          --overwrite
+        jf config use evidence-demo
       env:
         JF_URL: ${{ vars.JF_URL }}
-        # JF_USER: ${{ vars.JF_USER }}
-        # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-        JF_PROJECT: ${{ env.JF_PROJECT }}
+        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -89,8 +90,8 @@ jobs:
       run: |
         echo "🔐 Logging into JFrog Artifactory Docker registry..."
         echo "Registry: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}"
-        echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}
-        echo "✅ Successfully logged into Docker registry"$
+        echo "$JF_ACCESS_TOKEN" | docker login -u "$JF_USER" --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}
+        echo "✅ Successfully logged into Docker registry"
       
     - name: Build and Push Docker image
       id: build-and-push

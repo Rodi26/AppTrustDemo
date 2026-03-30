@@ -13,27 +13,29 @@ permissions:
 jobs:
   end2end-tests:
     name: Run E2E Tests with Docker Services
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       DOCKER_REGISTRY: ${{ vars.DOCKER_QA_REGISTRY }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      JF_USER: ${{ vars.JF_USER }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      with:
-        version: latest
-        oidc-provider-name: btcwallet-gh
-        oidc-audience: btcwallet-gh
+    - name: Configure JFrog CLI
       id: setup-cli
+      run: |
+        jf config add evidence-demo \
+          --url "$JF_URL" \
+          --access-token "$JF_ACCESS_TOKEN" \
+          --overwrite
+        jf config use evidence-demo
       env:
         JF_URL: ${{ vars.JF_URL }}
-        # JF_USER: ${{ vars.JF_USER }}
-        # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -46,7 +48,7 @@ jobs:
       run: |
         echo "🔐 Logging into JFrog Artifactory Docker registry..."
         echo "Registry: ${{ env.DOCKER_REGISTRY }}"
-        echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY }}
+        echo "$JF_ACCESS_TOKEN" | docker login -u "$JF_USER" --password-stdin ${{ env.DOCKER_REGISTRY }}
         echo "✅ Successfully logged into Docker registry"
 
     - name: Get latest Docker images from Artifactory for QA environment
@@ -56,7 +58,7 @@ jobs:
         
         # Get latest images
         BTCWALLET_RESPONSE=$(curl -s -X POST \
-          -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+          -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
           -H "Content-Type: text/plain" \
           -d 'items.find({"repo": "btcwallet-qa-docker-local", "name": "list.manifest.json", "path": {"$match": "btcwallet/*"}}).sort({"$desc": ["created"]}).limit(1)' \
             "${{ vars.JF_URL }}/artifactory/api/search/aql")
@@ -66,7 +68,7 @@ jobs:
         echo "✅ Found btcwallet image tag: $BTCWALLET_IMAGE_TAG"
 
         UI_RESPONSE=$(curl -s -X POST \
-          -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+          -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
           -H "Content-Type: text/plain" \
           -d 'items.find({"repo": "btcwallet-qa-docker-local", "name": "list.manifest.json", "path": {"$match": "btcwallet-ui/*"}}).sort({"$desc": ["created"]}).limit(1)' \
             "${{ vars.JF_URL }}/artifactory/api/search/aql")

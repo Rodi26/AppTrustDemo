@@ -14,11 +14,11 @@ permissions:
 jobs:
   create-application-version:
     name: Create Application Version
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       JF_URL: ${{ vars.JF_URL }}
       # JF_USER: ${{ vars.JF_USER }}
-      # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       APP_ID: ${{ vars.APPLICATION_NAME }}
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
@@ -32,19 +32,17 @@ jobs:
       CERTIFY_STAGE: "RELEASE"
 
     steps:
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
-        with:
-          version: latest
-          oidc-provider-name: btcwallet-gh
-          oidc-audience: btcwallet-gh
-          disable-auto-evidence-collection: true
+      - name: Configure JFrog CLI
         id: setup-cli
+        run: |
+          jf config add evidence-demo \
+            --url "$JF_URL" \
+            --access-token "$JF_ACCESS_TOKEN" \
+            --overwrite
+          jf config use evidence-demo
         env:
           JF_URL: ${{ vars.JF_URL }}
-          # JF_USER: ${{ vars.JF_USER }}
-          # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-          JF_PROJECT: ${{ env.JF_PROJECT }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
       - name: Get latest services build numbers
         id: get-latest-builds
@@ -53,7 +51,7 @@ jobs:
           getBuildNumber() {
             echo "Requeseting build ${{ vars.JF_URL }}/artifactory/api/build/$1?project=${{ env.JF_PROJECT }}" >&2
             local RESPONSE=$(curl -s -X GET \
-                                -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+                                -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
                                 "${{ vars.JF_URL }}/artifactory/api/build/$1?project=${{ env.JF_PROJECT }}")
             local LATEST_BUILD_NUMBER=$(echo "$RESPONSE" | \
                                 jq -r '.buildsNumbers | sort_by(.started) | reverse | .[0].uri | ltrimstr("/")')
@@ -97,7 +95,7 @@ jobs:
 
           # Use curl to get the HTTP status code and save the body to a temp file.
           HTTP_CODE=$(curl -sS -o "$RESPONSE_BODY_FILE" -w "%{http_code}" \
-            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
             "$API_URL")
 
           echo "HTTP Response Code: $HTTP_CODE"
@@ -152,7 +150,7 @@ jobs:
           echo "REQUEST_BODY=$REQUEST_BODY"
 
           RESPONSE_FILE=$(mktemp)
-          STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false")
+          STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$JF_URL/apptrust/api/v1/applications/$APP_ID/versions?async=false")
           echo "STATUS_CODE=$STATUS_CODE"
           
           if [ "201" != "$STATUS_CODE" ]; then 
@@ -197,7 +195,7 @@ jobs:
           echo "REQUEST_URL: $REQUEST_URL"
 
           RESPONSE_FILE=$(mktemp)
-          STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" -d "$REQUEST_BODY" "$REQUEST_URL")
+          STATUS_CODE=$(curl -o "$RESPONSE_FILE" -s -w "%{http_code}" -X POST -H "Authorization: Bearer $JF_ACCESS_TOKEN" -d "$REQUEST_BODY" "$REQUEST_URL")
           echo "STATUS_CODE=$STATUS_CODE"
           
           if [ "200" != "$STATUS_CODE" -a "201" != "$STATUS_CODE" ]; then 

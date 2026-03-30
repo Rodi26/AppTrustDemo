@@ -12,11 +12,11 @@ permissions:
 jobs:
   promote-application:
     name: Promote Latest Application Version
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       JF_URL: ${{ vars.JF_URL }}
-      # JF_USER: ${{ vars.JF_USER }}
-      # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      JF_USER: ${{ vars.JF_USER }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       # AppTrust application identifier (a.k.a. application key / slug). Must match the key used in AppTrust APIs.
       # Backward-compatible fallback: if APPLICATION_KEY is not set, use APPLICATION_NAME.
       APP_ID: ${{ vars.APPLICATION_KEY || vars.APPLICATION_NAME }}
@@ -37,75 +37,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
-        with:
-          version: 2.89.0
-          oidc-provider-name: btcwallet-gh
-          oidc-audience: btcwallet-gh
-          custom-server-id: setup-jfrog-cli-server
+      - name: Configure JFrog CLI
         id: setup-cli
+        run: |
+          jf config add evidence-demo \
+            --url "$JF_URL" \
+            --access-token "$JF_ACCESS_TOKEN" \
+            --overwrite
+          jf config use evidence-demo
         env:
           JF_URL: ${{ vars.JF_URL }}
-          # JF_USER: ${{ vars.JF_USER }}
-          # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
       - name: Normalize JFrog CLI base URL for AppTrust
         id: normalize-cli
         run: |
-          set -euo pipefail
-
-          # Determine the server-id created by the setup action.
-          # The action exports SETUP_JFROG_CLI_SERVER_IDS (can be a single id or comma-separated list).
-          SERVER_ID="${SETUP_JFROG_CLI_SERVER_IDS%%,*}"
-          if [ -z "${SERVER_ID:-}" ]; then
-            echo "⚠️  SETUP_JFROG_CLI_SERVER_IDS is empty; cannot determine JFrog CLI server-id for normalization." >&2
-            exit 0
-          fi
-          echo "Using JFrog CLI server-id: $SERVER_ID"
-
-          # JFrog CLI v2.82.0 does not support `jf c show <id> --json`.
-          # Parse the configured URL from the human-readable output.
-          SHOW_OUT=$(jf c show "$SERVER_ID" || true)
-          echo "$SHOW_OUT"
-
-          # Extract the URL from "JFrog Platform URL:" line (handles tabs and spaces)
-          CFG_URL=$(echo "$SHOW_OUT" | grep -i "JFrog Platform URL" | sed -E 's/.*JFrog Platform URL:[[:space:]]*//' | sed 's/[[:space:]]*$//' | head -n 1)
-
-          # Fallback: if not found, try other possible formats
-          if [ -z "${CFG_URL:-}" ]; then
-            CFG_URL=$(echo "$SHOW_OUT" | grep -iE "^[Uu][Rr][Ll]:" | sed -E 's/^[Uu][Rr][Ll]:[[:space:]]*//' | head -n 1)
-          fi
-
-          if [ -z "${CFG_URL:-}" ]; then
-            echo "⚠️  Could not parse JFrog CLI configured url from 'jf c show'. Skipping normalization." >&2
-            exit 0
-          fi
-
-          # Trim trailing slash for consistent matching
-          CFG_URL="${CFG_URL%/}"
-          echo "JFrog CLI configured url: $CFG_URL"
-
-          # If the configured URL ends with /apptrust, strip it. Otherwise keep as-is.
-          if [[ "$CFG_URL" == */apptrust ]]; then
-            BASE_URL="${CFG_URL%/apptrust}"
-            echo "Detected url ending with /apptrust. Normalizing to: $BASE_URL"
-
-            jf c add "$SERVER_ID" \
-              --url "$BASE_URL" \
-              --access-token "${{ steps.setup-cli.outputs.oidc-token }}" \
-              --interactive=false \
-              --overwrite=true
-          else
-            echo "No normalization needed."
-          fi
-
-          # Print final config
-          FINAL_OUT=$(jf c show "$SERVER_ID" || true)
-          echo "$FINAL_OUT"
-
-          # Export SERVER_ID as output for use in subsequent steps
+          SERVER_ID="evidence-demo"
           echo "server_id=$SERVER_ID" >> "$GITHUB_OUTPUT"
+          echo "Using server-id: $SERVER_ID"
+          jf c show "$SERVER_ID" || true
 
       - name: Configure dedicated JFrog CLI server for AppTrust endpoints
         id: apptrust_server
@@ -124,7 +74,7 @@ jobs:
             --distribution-url "${JF_URL%/}/distribution" \
             --mission-control-url "${JF_URL%/}/mc" \
             --pipelines-url "${JF_URL%/}/pipelines" \
-            --access-token "${{ steps.setup-cli.outputs.oidc-token }}" \
+            --access-token "$JF_ACCESS_TOKEN" \
             --interactive=false \
             --overwrite=true
 
@@ -149,7 +99,7 @@ jobs:
 
           RESPONSE_FILE=$(mktemp)
           STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X GET \
-            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
             "$API_URL")
 
           if [ "$STATUS_CODE" != "200" ]; then
@@ -195,7 +145,7 @@ jobs:
 
           RESPONSE_FILE=$(mktemp)
           STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X GET \
-            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
             "$APP_DETAILS_URL")
 
           if [ "$STATUS_CODE" != "200" ]; then
@@ -335,7 +285,7 @@ jobs:
           # Capture full response for better error diagnostics
           RESPONSE_FILE=$(mktemp)
           STATUS_CODE=$(curl -s -o "$RESPONSE_FILE" -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" \
+            -H "Authorization: Bearer $JF_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$REQUEST_BODY" \
             "$PROMOTION_URL")
@@ -462,7 +412,7 @@ jobs:
         run: |
           echo "🔐 Logging into JFrog Artifactory Docker registry..."
           echo "Registry: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}"
-          echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}
+          echo "$JF_ACCESS_TOKEN" | docker login -u "$JF_USER" --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_QA_REPO }}
           echo "✅ Successfully logged into Docker registry"
 
       - name: Get latest Docker images from Artifactory for QA environment
@@ -472,12 +422,12 @@ jobs:
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           URL="$JF_URL/apptrust/api/v1/applications/$APP_ID/versions/$APP_VER/content?include=sources"
           echo "Requesting application sources: $URL"
-          STATUS_CODE=$(curl -s -o result.json -w "%{http_code}" -X GET -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" "$URL")
+          STATUS_CODE=$(curl -s -o result.json -w "%{http_code}" -X GET -H "Authorization: Bearer $JF_ACCESS_TOKEN" "$URL")
 
           if [ "$STATUS_CODE" != "200" ]; then
             echo "Request failed with code $STATUS_CODE"
             # Running again without silent to see errors
-            curl -X GET -H "Authorization: Bearer ${{ steps.setup-cli.outputs.oidc-token }}" "$URL"
+            curl -X GET -H "Authorization: Bearer $JF_ACCESS_TOKEN" "$URL"
             exit 1
           fi
 

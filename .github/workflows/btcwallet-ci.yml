@@ -24,7 +24,7 @@ jobs:
   build-and-test:
     name: Build and Test Java
     # runs-on: self-hosted
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
@@ -33,6 +33,8 @@ jobs:
       SOURCE_BUILD_NAME: "btcwallet"
       JF_PROJECT: ${{ vars.JF_PROJECT }}
       DOCKER_REGISTRY_PREFIX: ${{ vars.DOCKER_REGISTRY_PREFIX }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      JF_USER: ${{ vars.JF_USER }}
     outputs:
       build_name: ${{ steps.publish_build.outputs.build_name }}
       build_number: ${{ steps.publish_build.outputs.build_number }}
@@ -62,19 +64,17 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('btcwallet/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      with:
-        version: latest
-        custom-server-id: evidence-demo
-        oidc-provider-name: btcwallet-gh
-        oidc-audience: btcwallet-gh
+    - name: Configure JFrog CLI
       id: setup-cli
+      run: |
+        jf config add evidence-demo \
+          --url "$JF_URL" \
+          --access-token "$JF_ACCESS_TOKEN" \
+          --overwrite
+        jf config use evidence-demo
       env:
         JF_URL: ${{ vars.JF_URL }}
-        # JF_USER: ${{ vars.JF_USER }}
-        # JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-        JF_PROJECT: ${{ env.JF_PROJECT }}
+        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
         
 
     - name: Setup Maven
@@ -166,9 +166,9 @@ jobs:
       run: |
         echo "🔐 Logging into JFrog Artifactory Docker registry..."
         echo "Registry: ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}"
-        echo ${{ steps.setup-cli.outputs.oidc-token }} | docker login -u ${{ steps.setup-cli.outputs.oidc-user }} --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}
+        echo "$JF_ACCESS_TOKEN" | docker login -u "$JF_USER" --password-stdin ${{ env.DOCKER_REGISTRY_PREFIX }}/${{ env.PROJECT_DOCKER_DEV_REPO }}
         echo "✅ Successfully logged into Docker registry"
-      
+
     - name: Build and Push Docker image
       id: build-and-push
       run: |

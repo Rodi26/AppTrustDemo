@@ -6,7 +6,7 @@ on:
 jobs:
   test-evd:
     name: Test EVD
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       JFROG_CLI_KEY_ALIAS: ${{ vars.JFROG_CLI_KEY_ALIAS }}
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
@@ -16,13 +16,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      with:
-        version: latest
+    - name: Configure JFrog CLI
+      run: |
+        jf config add evidence-demo \
+          --url "$JF_URL" \
+          --access-token "$JF_ACCESS_TOKEN" \
+          --overwrite
+        jf config use evidence-demo
       env:
         JF_URL: ${{ vars.JF_URL }}
-        JF_USER: ${{ vars.JF_USER }}
         JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
     - name: Create evidence default key 

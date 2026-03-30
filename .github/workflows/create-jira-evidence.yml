@@ -34,7 +34,7 @@ permissions:
 
 jobs:
   create-jira-evidence:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       JIRA_ID_REGEX: '[A-Z]+-[0-9]+'
       JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
@@ -46,20 +46,20 @@ jobs:
       JFROG_CLI_SIGNING_KEY: ${{ secrets.JFROG_CLI_SIGNING_KEY }}
       PROJECT_DOCKER_DEV_REPO: ${{ vars.PROJECT_DOCKER_DEV_REPO }}
       JF_PROJECT: ${{ vars.JF_PROJECT }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
     steps:
-      - name: Setup jfrog cli
-        uses: jfrog/setup-jfrog-cli@v4
-        with:
-          version: latest
-          custom-server-id: evidence-demo
-          oidc-provider-name: btcwallet-gh
-          oidc-audience: btcwallet-gh
+      - name: Configure JFrog CLI
         id: setup-cli
+        run: |
+          jf config add evidence-demo \
+            --url "$JF_URL" \
+            --access-token "$JF_ACCESS_TOKEN" \
+            --overwrite
+          jf config use evidence-demo
         env:
           JF_URL: ${{ vars.JF_URL }}
-          # JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_ACCESS_TOKEN }}
-          JF_PROJECT: "${{ env.JF_PROJECT }}"
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Setup Go
