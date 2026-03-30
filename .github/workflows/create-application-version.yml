@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
+        uses: jfrog/setup-jfrog-cli@v5
         with:
           version: latest
           custom-server-id: evidence-demo
