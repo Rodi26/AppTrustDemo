@@ -141,8 +141,8 @@ jobs:
           {
             "application_key": "${{ env.APP_ID }}",
             "application_name": "${{ env.APP_DISPLAY_NAME }}",
-            "stage": "$STAGE",
-            "gate": "exit",
+            "stage_name": "$STAGE",
+            "gate_name": "exit",
             "status": "certified",
             "timestamp": "$TIMESTAMP"
           }
@@ -191,7 +191,7 @@ jobs:
           echo "  Stage: $STAGE"
           echo "  Timestamp: $TIMESTAMP"
           
-          printf '{"application_key":"%s","application_name":"%s","stage":"%s","gate":"exit","status":"certified","timestamp":"%s"}\n' "${{ env.APP_ID }}" "${{ env.APP_DISPLAY_NAME }}" "$STAGE" "$TIMESTAMP" > gate-certify-predicate-qa.json
+          printf '{"application_key":"%s","application_name":"%s","stage_name":"%s","gate_name":"exit","outcome":"pass","project_key":"btcwallet"}\n' "${{ env.APP_ID }}" "${{ env.APP_DISPLAY_NAME }}" "$STAGE" "$TIMESTAMP" > gate-certify-predicate-qa.json
           
           printf '# Gate Certification Evidence - QA Stage\n- **Stage**: %s\n- **Gate Type**: exit\n- **Status**: certified\n- **Timestamp**: %s\n- **Application**: %s\n- **Version**: %s\n' "$STAGE" "$TIMESTAMP" "${{ env.APP_ID }}" "$APP_VER" > gate-certify-qa.md
 
@@ -282,8 +282,8 @@ jobs:
           {
             "application_key": "${{ env.APP_ID }}",
             "application_name": "${{ env.APP_DISPLAY_NAME }}",
-            "stage": "$STAGE",
-            "gate": "exit",
+            "stage_name": "$STAGE",
+            "gate_name": "exit",
             "status": "certified",
             "timestamp": "$TIMESTAMP"
           }

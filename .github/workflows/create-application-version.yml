@@ -186,8 +186,8 @@ jobs:
           {
             "application_key": "${{ env.APP_ID }}",
             "application_name": "BTC Wallet App",
-            "stage": "$STAGE",
-            "gate": "exit",
+            "stage_name": "$STAGE",
+            "gate_name": "exit",
             "status": "certified",
             "timestamp": "$TIMESTAMP"
           }
