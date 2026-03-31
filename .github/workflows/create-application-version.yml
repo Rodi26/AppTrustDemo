@@ -3,6 +3,13 @@ name: Create Application Version
 on:
   workflow_dispatch:
   workflow_call:
+  workflow_run:
+    workflows:
+      - "BTC Wallet Service CI"
+      - "BTCWallet UI Service CI"
+      - "AI Translate Service CI"
+    types: [completed]
+    branches: [main]
 
 permissions:
   actions: read           # for detecting the Github Actions environment

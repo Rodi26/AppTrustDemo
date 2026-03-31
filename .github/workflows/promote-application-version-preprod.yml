@@ -129,20 +129,38 @@ jobs:
             echo "✅ Dry-run succeeded — policy evaluation passed. Proceeding with actual promotion."
           fi
 
+      - name: Create evidence for Release Approval (simulate SNOW)
+        continue-on-error: true
+        run: |
+          echo "📋 Creating evidence for Release Approval (SNOW)..."
+          cd snow
+
+          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd"
+
+          jf evd create \
+              --subject-repo-path="$EVIDENCE_PATH" \
+              --project ${{ env.JF_PROJECT }} \
+              --predicate approval.json \
+              --predicate-type https://servicenow.com/approval/v1 \
+              --markdown approval.md \
+              --provider-id servicenow
+
+          echo "✅ Evidence created successfully"
+
       - name: Promote application to ${{ env.TARGET_STAGE }}
         id: promote_step
         run: |
           set -euo pipefail
           APP_VER=${{ steps.get_app_ver.outputs.app_ver }}
           CURRENT_STAGE="${{ steps.get_app_ver.outputs.current_stage }}"
-          
+
           # Normalize stage names (trim whitespace, convert to uppercase for comparison)
           CURRENT_STAGE_NORM=$(echo "$CURRENT_STAGE" | tr '[:lower:]' '[:upper:]' | xargs)
           TARGET_STAGE_NORM=$(echo "$TARGET_STAGE" | tr '[:lower:]' '[:upper:]' | xargs)
-          
+
           echo "Debug: CURRENT_STAGE='$CURRENT_STAGE' (normalized: '$CURRENT_STAGE_NORM')"
           echo "Debug: TARGET_STAGE='$TARGET_STAGE' (normalized: '$TARGET_STAGE_NORM')"
-          
+
           # Check if already in target stage
           if [ "$CURRENT_STAGE_NORM" == "$TARGET_STAGE_NORM" ]; then
             echo "ℹ️  Application '$APP_ID' version $APP_VER is already in stage '$TARGET_STAGE'."
@@ -150,7 +168,7 @@ jobs:
             echo "promotion_skipped=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          
+
           echo "Promoting application '$APP_ID' version $APP_VER from stage '$CURRENT_STAGE' to stage '$TARGET_STAGE'..."
 
           if jf apptrust version-promote "$APP_ID" "$APP_VER" "$TARGET_STAGE" --sync; then
@@ -248,19 +266,3 @@ jobs:
             exit 1
           fi
 
-      - name: Create evidence for Release Approval (simulate SNOW)
-        run: |
-          echo "📋 Creating evidence for Release Approval (SNOW)..."
-          cd snow
-
-          EVIDENCE_PATH="${{ env.JF_PROJECT }}-application-versions/${{ env.APP_ID }}/${{ steps.get_app_ver.outputs.app_ver }}/release-bundle.json.evd"
-          
-          jf evd create \
-              --subject-repo-path="$EVIDENCE_PATH" \
-              --project ${{ env.JF_PROJECT }} \
-              --predicate approval.json \
-              --predicate-type https://servicenow.com/approval/v1 \
-              --markdown approval.md \
-              --provider-id servicenow
-                   
-          echo "✅ Evidence created successfully"
